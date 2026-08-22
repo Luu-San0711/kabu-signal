@@ -1,0 +1,145 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>株シグナル</title>
+<style>
+:root{--bg:#FBFAF6;--card:#fff;--ink:#22261F;--muted:#6a7064;--line:#E4E1D5;
+--green:#059669;--red:#C2453C;--amber:#8A5A12;--amberbg:#FBF3E4;--chip:#F0F7F1}
+@media (prefers-color-scheme:dark){:root{--bg:#14171A;--card:#1D2226;--ink:#E7E9E3;
+--muted:#9BA196;--line:#2E343A;--green:#10B981;--red:#E07B72;--amber:#E3B36A;
+--amberbg:#2C2417;--chip:#1B2A22}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:15px;line-height:1.7}
+.wrap{max-width:640px;margin:0 auto;padding:20px 14px 60px}
+h1{font-size:20px;margin:4px 0 2px}
+.upd{font-size:12px;color:var(--muted)}
+.badge{display:inline-block;padding:4px 12px;border-radius:99px;font-weight:700;
+font-size:13.5px;background:var(--chip);margin:10px 0 2px}
+.badge.ng{background:var(--amberbg);color:var(--red)}
+.regdetail{font-size:12.5px;color:var(--muted)}
+h2{font-size:15px;margin:26px 0 8px;border-left:4px solid var(--green);padding-left:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:12px 14px;margin:10px 0}
+.cardhead{display:flex;gap:8px;align-items:baseline}
+.code{font-weight:800;font-size:16px}
+.name{flex:1;font-size:14px}
+.stars{color:var(--green);font-weight:700;letter-spacing:.1em}
+.row{margin:4px 0;font-size:14px}
+.row.big{font-size:15px}
+.lbl{display:inline-block;background:var(--chip);border-radius:5px;padding:0 7px;
+font-size:12px;margin-right:7px;color:var(--muted)}
+.stopv{color:var(--red)}
+.unit,.sub{font-size:12px;color:var(--muted);margin-left:6px}
+.empty{color:var(--muted);background:var(--card);border:1px dashed var(--line);
+border-radius:10px;padding:14px;text-align:center;font-size:13.5px}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+border-radius:12px;overflow:hidden;font-size:13.5px}
+th{font-size:11.5px;color:var(--muted);font-weight:500;text-align:left;padding:8px 10px;
+border-bottom:1px solid var(--line)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;
+font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.pos{color:var(--green)}.neg{color:var(--red)}
+.act-sell{color:var(--red);font-weight:700}.act-warn{color:var(--amber)}
+.rank{display:inline-block;background:var(--chip);border-radius:5px;padding:0 6px;
+font-size:11.5px;color:var(--muted)}
+.bar{height:5px;background:var(--line);border-radius:3px;margin:4px 0 1px;max-width:140px}
+.bar i{display:block;height:100%;background:var(--green);border-radius:3px}
+.total{margin:8px 2px;font-weight:700}
+.note{background:var(--amberbg);color:var(--amber);border-radius:8px;padding:8px 12px;
+font-size:12.5px;margin-top:8px}
+.foot{margin-top:34px;padding-top:12px;border-top:1px solid var(--line);
+font-size:11.5px;color:var(--muted)}
+</style></head><body><div class="wrap">
+<h1>📊 株シグナル</h1>
+<div class="upd" id="upd">読み込み中…</div>
+<div id="regime"></div>
+<h2>日本株｜新規買い候補（翌営業日 寄付成行）</h2>
+<div id="jp"></div>
+<h2>日本株｜監視中の保有銘柄</h2>
+<div id="watch"></div>
+<h2>米国株｜モメンタム・ポートフォリオ</h2>
+<div id="us"></div>
+<div class="foot">
+シグナル根拠（過去8年検証）: ★★★=勝率47%・平均+1.8%/回 ／ ★★☆=勝率42%・平均+1.8%/回
+／ 勝ち平均+16%・負け平均−8%（利大損小型）。米国株: 年率+24〜26%・最大DD−52%（上位20等金額時）。<br>
+本ページはバックテストに基づく情報提供であり投資助言ではありません。発注はご自身の判断で。
+</div>
+</div>
+<script>
+const DATA_URL = "https://jnngsfheylhfzmvqtqey.supabase.co/storage/v1/object/public/dashboard/data.json";
+const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const yen = v => Number(v).toLocaleString("ja-JP", {maximumFractionDigits:0});
+const usd = v => "$" + Number(v).toLocaleString("en-US", {maximumFractionDigits:2});
+const pct = (v,d=1) => (v>=0?"+":"") + (v*100).toFixed(d) + "%";
+const STAR = {3:"★★★", 2:"★★☆"};
+
+function render(d){
+  document.getElementById("upd").textContent =
+    `更新 ${d.updated} ／ データ ${d.data_date} 時点`;
+  const reg = d.regime || {};
+  let rh = reg.ok
+    ? `<span class="badge">🟢 地合い良好</span>`
+    : `<span class="badge ng">🔴 地合い悪化・新規買い停止</span>`;
+  if (reg.n225) rh += `<div class="regdetail">日経平均 ${yen(reg.n225)} ／ 200日線 ${yen(reg.sma200)}（乖離 ${pct(reg.n225/reg.sma200-1)}）</div>`;
+  document.getElementById("regime").innerHTML = rh;
+
+  // 日本株候補
+  const jp = document.getElementById("jp");
+  const picks = d.picks || [];
+  if (!reg.ok) jp.innerHTML = `<div class="empty">地合い悪化中のため新規買いは停止しています</div>`;
+  else if (!picks.length) jp.innerHTML = `<div class="empty">本日の新規候補はありません</div>`;
+  else jp.innerHTML = picks.map(p => `
+    <div class="card">
+      <div class="cardhead"><span class="code">${esc(p.code)}</span>
+        <span class="name">${esc(p.name)}</span><span class="stars">${STAR[p.score]||"★"}</span></div>
+      <div class="row big">${yen(p.close)}円 × ${p.shares}株 ≒ <b>${(p.amount/10000).toFixed(1)}万円</b>
+        <span class="unit">${p.shares>=100?"現物":"かぶミニ(1株単位)"}・寄付成行</span></div>
+      <div class="row"><span class="lbl">損切り</span><b class="stopv">${yen(p.stop)}円</b>
+        <span class="unit">逆指値 −10%</span></div>
+      <div class="row"><span class="lbl">手仕舞い</span>デッドクロス通知まで保有
+        <span class="unit">最長60営業日・平均40日</span></div>
+      <div class="row sub">売買代金 ${p.turnover_oku.toFixed(1)}億円/日</div>
+    </div>`).join("");
+
+  // 監視中
+  const watch = d.watch || [];
+  document.getElementById("watch").innerHTML = watch.length ? `
+    <table><tr><th>銘柄</th><th>損益</th><th>保有</th><th>状態</th></tr>
+    ${watch.map(w => {
+      const dist = w.stop ? (w.close/w.stop-1)*100 : null;
+      const bar = dist===null ? "" :
+        `<div class="bar"><i style="width:${Math.max(0,Math.min(100,dist/25*100)).toFixed(0)}%"></i></div><span class="sub">損切りまで ${(dist>=0?"+":"")+dist.toFixed(1)}%</span>`;
+      const acls = /売り|手仕舞い/.test(w.action) ? "act-sell" : (/⚠/.test(w.action) ? "act-warn" : "");
+      return `<tr><td><b>${esc(w.code)}</b> ${esc(w.name)}</td>
+        <td class="${w.chg>=0?"pos":"neg"}">${pct(w.chg)}</td><td>${w.held}日</td>
+        <td class="${acls}">${esc(w.action)}<br>${bar}</td></tr>`;
+    }).join("")}</table>`
+    : `<div class="empty">監視中の銘柄はありません</div>`;
+
+  // 米国
+  const us = document.getElementById("us");
+  const port = d.port || [];
+  if (!port.length) us.innerHTML = `<div class="empty">初回リバランス前です</div>`;
+  else {
+    const total = port.reduce((s,p)=>s+(p.cost||0),0);
+    const meta = d.us_meta || {};
+    us.innerHTML = `<table><tr><th>銘柄（勢い順位）</th><th>数量</th><th>金額</th><th>12ヶ月</th></tr>
+      ${port.map(p => `<tr><td><span class="rank">${p.rank}位</span> <b>${esc(p.ticker)}</b>
+        <span class="sub">${esc(p.name)}</span></td>
+        <td>${usd(p.close)} × ${p.shares}株</td><td>${usd(p.cost)}</td>
+        <td class="pos">${pct(p.mom,0)}</td></tr>`).join("")}</table>
+      <div class="total">合計 ${usd(total)}${meta.budget_usd?` ／ 予算 ${usd(meta.budget_usd)}`:""}
+        <span class="sub">　次回入替: 来月第1営業日（土曜に健全性チェック）</span></div>`
+      + ((meta.skipped||[]).length ? `<div class="note">予算不足でスキップ中の上位銘柄: ${esc(meta.skipped.slice(0,6).join(", "))}</div>` : "");
+  }
+}
+
+fetch(DATA_URL + "?t=" + Date.now(), {cache:"no-store"})
+  .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+  .then(render)
+  .catch(e => {
+    document.getElementById("upd").textContent = "データを取得できませんでした（初回更新前かネットワークエラー）";
+  });
+</script>
+</body></html>
