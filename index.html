@@ -90,10 +90,21 @@ font-weight:800;font-size:14.5px}
 font-size:12px;margin:0 0 10px;line-height:1.6}
 .foot{margin:26px 2px 0;padding-top:12px;border-top:1px solid var(--line);
 font-size:11px;color:var(--faint);line-height:1.8}
+.todo{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--brand);
+border-radius:10px;padding:10px 14px;margin:0 0 12px}
+.todo .th{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em;margin-bottom:4px}
+.todo .it{font-size:14px;font-weight:700;margin:5px 0;line-height:1.55}
+.todo .it .n{display:inline-block;background:var(--brand);color:#fff;border-radius:50%;
+width:18px;height:18px;text-align:center;line-height:18px;font-size:11px;margin-right:7px}
+.todo .none{font-size:13.5px;color:var(--muted);font-weight:400}
+.guide{background:var(--surface2);border-radius:10px;padding:10px 13px;margin:0 0 10px;
+font-size:12.5px;line-height:1.75;color:var(--muted)}
+.guide b{color:var(--ink)}
 </style></head><body>
 <div class="hdr"><div class="mark"></div><h1>株シグナル</h1><div class="upd" id="upd">読み込み中…</div></div>
 <div class="wrap">
   <div class="tiles" id="tiles"></div>
+  <div class="todo" id="todo"></div>
   <div class="tabs" id="tabs">
     <div class="tab on" data-t="jp">買い候補<span class="cnt" id="cjp">0</span></div>
     <div class="tab" data-t="watch">監視中<span class="cnt" id="cw">0</span></div>
@@ -241,6 +252,20 @@ function render(d){
   document.getElementById("cw").textContent = watch.length;
   document.getElementById("cus").textContent = port.length;
 
+  // 今日やること
+  const acts = [];
+  if (reg.ok && picks.length)
+    acts.push(`日本株: 明日の朝、寄付成行で買い注文 → ${picks.map(p=>p.code+" "+p.name).join("、")}（詳細は「買い候補」タブ）`);
+  watch.filter(x=>/売り|手仕舞い/.test(x.action)).forEach(x=>
+    acts.push(`日本株: <span style="color:var(--down)">${x.code} ${esc(x.name)} を売却</span>（${/損切/.test(x.action)?"損切りライン到達":"手仕舞いシグナル"}）`));
+  if (!port.length)
+    acts.push(`米国株: 初回のみ「米国株」タブのリストを全銘柄購入（米国市場は日本時間 夜23:30〜）`);
+  document.getElementById("todo").innerHTML =
+    `<div class="th">📌 今日やること</div>` +
+    (acts.length
+      ? acts.map((a,i)=>`<div class="it"><span class="n">${i+1}</span>${a}</div>`).join("")
+      : `<div class="none">今日は特にやることはありません。ツールが自動監視を継続中です（平日19:30・月初9:00・土曜9:00に通知）</div>`);
+
   // 買い候補
   const jp = document.getElementById("sec-jp");
   let jpH = reg.ok
@@ -288,7 +313,11 @@ function render(d){
   const us = document.getElementById("sec-us");
   if (!port.length) us.innerHTML = `<div class="empty">保有リスト未構築です。<br>「通知テスト.command」→ 2 を実行すると<br>モメンタム上位の推奨ポートフォリオが生成されます</div>`;
   else {
-    us.innerHTML = `<div class="total num">評価総額 ${usd(total)}${meta.budget_usd?` <span class="mut">／ 予算 ${usd(meta.budget_usd)}</span>`:""}
+    us.innerHTML = `<div class="guide"><b>■ このタブの見方</b>：これは「買い候補」ではなく<b>常に保有しておく銘柄セット</b>です。<br>
+      ① <b>初回だけ</b>：リストの全銘柄を記載の株数どおり購入<br>
+      ② <b>以後</b>：毎月第1営業日のLINE通知の「売り／買い」指示だけ実行（それ以外の日は何もしない）<br>
+      ③ 土曜の週次チェックで「勢い圏外」警告が出た銘柄は早めの売却を検討</div>`
+    + `<div class="total num">評価総額 ${usd(total)}${meta.budget_usd?` <span class="mut">／ 予算 ${usd(meta.budget_usd)}</span>`:""}
       <span class="s">次回入替: 来月第1営業日（土曜に健全性チェック通知）</span></div>`
     + ((meta.skipped||[]).length?`<div class="note">予算不足でスキップ中の上位銘柄: ${esc(meta.skipped.slice(0,6).join(", "))}<br>資金を増やすと自動で上位から組み入れます</div>`:"")
     + port.map((p,i)=>`
@@ -299,9 +328,7 @@ function render(d){
       <div class="pricerow"><span class="px num">${usd(p.close)}</span>
         <span class="mut">× ${p.shares}株 = <b style="color:var(--ink)">${usd(p.cost)}</b></span></div>
       <div class="chartbox" id="uc${i}"></div>
-    </div>`).join("")
-    + `<div class="total num">合計 ${usd(total)}${meta.budget_usd?` <span class="mut">／ 予算 ${usd(meta.budget_usd)}</span>`:""}
-       <span class="s">　次回入替: 来月第1営業日</span></div>`;
+    </div>`).join("");
     port.forEach((p,i)=>drawChart(document.getElementById("uc"+i), charts[p.ticker],
       {entryDate:d.us_entry_date, fmt:usd, H:140, line:true}));
   }
