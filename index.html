@@ -1,233 +1,319 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#14171D">
 <title>株シグナル</title>
 <style>
-:root{--bg:#FBFAF6;--card:#fff;--ink:#22261F;--muted:#6a7064;--line:#E4E1D5;
---green:#059669;--blue:#2563EB;--red:#C2453C;--amber:#8A5A12;--amberbg:#FBF3E4;--chip:#F0F7F1}
-@media (prefers-color-scheme:dark){:root{--bg:#14171A;--card:#1D2226;--ink:#E7E9E3;
---muted:#9BA196;--line:#2E343A;--green:#10B981;--blue:#60A5FA;--red:#E07B72;--amber:#E3B36A;
---amberbg:#2C2417;--chip:#1B2A22}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
-font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:15px;line-height:1.7}
-.wrap{max-width:640px;margin:0 auto;padding:20px 14px 60px}
-h1{font-size:20px;margin:4px 0 2px}
-.upd{font-size:12px;color:var(--muted)}
-.badge{display:inline-block;padding:4px 12px;border-radius:99px;font-weight:700;
-font-size:13.5px;background:var(--chip);margin:10px 0 2px}
-.badge.ng{background:var(--amberbg);color:var(--red)}
-.regdetail{font-size:12.5px;color:var(--muted)}
-h2{font-size:15px;margin:26px 0 8px;border-left:4px solid var(--green);padding-left:8px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
-padding:12px 14px;margin:10px 0}
-.cardhead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
-.code{font-weight:800;font-size:16px}
-.name{flex:1;font-size:14px;min-width:120px}
-.stars{color:var(--green);font-weight:700;letter-spacing:.1em}
-.row{margin:4px 0;font-size:14px}
-.row.big{font-size:15px}
-.lbl{display:inline-block;background:var(--chip);border-radius:5px;padding:0 7px;
-font-size:12px;margin-right:7px;color:var(--muted)}
-.stopv{color:var(--red)}
-.unit,.sub{font-size:12px;color:var(--muted);margin-left:6px}
-.pos{color:var(--green)}.neg{color:var(--red)}
-.act{font-size:13.5px;margin:4px 0}
-.act-sell{color:var(--red);font-weight:700}.act-warn{color:var(--amber);font-weight:700}
-.empty{color:var(--muted);background:var(--card);border:1px dashed var(--line);
-border-radius:10px;padding:14px;text-align:center;font-size:13.5px}
-.rank{display:inline-block;background:var(--chip);border-radius:5px;padding:0 6px;
-font-size:11.5px;color:var(--muted)}
-.total{margin:8px 2px;font-weight:700}
-.note{background:var(--amberbg);color:var(--amber);border-radius:8px;padding:8px 12px;
-font-size:12.5px;margin-top:8px}
-.chartbox{position:relative;margin-top:10px}
+:root{
+  --bg:#0E1116; --surface:#171C23; --surface2:#1F2630; --line:#2A323E;
+  --ink:#E9ECF1; --muted:#8B93A1; --faint:#5A6270;
+  --brand:#CF1B2B; --up:#F0454C; --down:#33A7CE; --amber:#FFB020;
+  --upbg:rgba(240,69,76,.12); --downbg:rgba(51,167,206,.12); --amberbg:rgba(255,176,32,.1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
+font-size:14.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+/* ヘッダー */
+.hdr{position:sticky;top:0;z-index:20;background:#14171D;border-bottom:1px solid var(--line);
+padding:10px 14px;display:flex;align-items:center;gap:10px}
+.mark{width:10px;height:22px;background:var(--brand);border-radius:2px}
+.hdr h1{font-size:16.5px;margin:0;letter-spacing:.03em;font-weight:800}
+.hdr .upd{margin-left:auto;font-size:11px;color:var(--muted);text-align:right;line-height:1.4}
+/* サマリー */
+.wrap{max-width:680px;margin:0 auto;padding:12px 12px 70px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 12px}
+@media(max-width:520px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.tile .k{font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.tile .v{font-size:15px;font-weight:800;margin-top:2px;line-height:1.3}
+.tile .s{font-size:10.5px;color:var(--muted)}
+.tile.ok .v{color:#FF6B72}.tile.ng .v{color:var(--down)}
+/* タブ */
+.tabs{position:sticky;top:47px;z-index:19;display:flex;background:var(--bg);
+border-bottom:2px solid var(--line);margin:0 -12px 12px;padding:0 12px}
+.tab{flex:1;text-align:center;padding:9px 2px 7px;font-size:13.5px;font-weight:700;
+color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;
+-webkit-tap-highlight-color:transparent;user-select:none}
+.tab.on{color:var(--ink);border-bottom-color:var(--brand)}
+.tab .cnt{display:inline-block;min-width:17px;padding:0 4px;margin-left:4px;border-radius:9px;
+background:var(--surface2);font-size:11px;color:var(--muted)}
+.tab.on .cnt{background:var(--brand);color:#fff}
+.sec{display:none}.sec.on{display:block}
+/* バナー */
+.banner{border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;margin:0 0 12px;
+display:flex;gap:8px;align-items:center}
+.banner.ok{background:var(--upbg);color:#FF8A90}
+.banner.ng{background:var(--amberbg);color:var(--amber)}
+.banner .d{font-weight:400;font-size:11.5px;color:var(--muted)}
+/* カード */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+padding:11px 13px;margin:0 0 10px}
+.chead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.code{font-weight:800;font-size:16px;letter-spacing:.02em}
+.name{flex:1;font-size:13px;color:var(--muted);min-width:110px;overflow:hidden;
+text-overflow:ellipsis;white-space:nowrap}
+.stars{color:var(--amber);font-size:12.5px;letter-spacing:.12em}
+.chip{display:inline-block;font-size:10.5px;font-weight:800;border-radius:4px;padding:1px 6px}
+.chip.buy{background:var(--brand);color:#fff}
+.chip.sell{background:var(--down);color:#04222E}
+.chip.rank{background:var(--surface2);color:var(--muted);font-weight:600}
+.pricerow{display:flex;align-items:baseline;gap:8px;margin:7px 0 2px;flex-wrap:wrap}
+.px{font-size:21px;font-weight:800}
+.pl{font-size:15px;font-weight:800}
+.pl.up{color:var(--up)}.pl.dn{color:var(--down)}
+.mut{font-size:11.5px;color:var(--muted)}
+.orow{display:flex;gap:6px;margin:7px 0 2px;flex-wrap:wrap;font-size:12.5px}
+.obox{background:var(--surface2);border-radius:7px;padding:5px 10px;line-height:1.45}
+.obox .t{font-size:10px;color:var(--muted);letter-spacing:.06em}
+.obox b{font-size:13px}
+.obox.stop b{color:var(--amber)}
+.actline{margin:7px 0 0;font-size:13px;font-weight:700}
+.actline.sell{color:var(--down)}.actline.warn{color:var(--amber)}.actline.hold{color:var(--muted);font-weight:400}
+/* チャート */
+.chartbox{position:relative;margin-top:9px;background:#12161C;border:1px solid var(--line);
+border-radius:9px;padding:7px 6px 3px}
 .chartbox svg{display:block;width:100%}
-.clegend{display:flex;gap:12px;font-size:11px;color:var(--muted);margin-top:2px}
-.clegend i{display:inline-block;width:12px;height:2.5px;border-radius:2px;margin-right:4px;vertical-align:3px}
-.ctip{position:absolute;top:4px;pointer-events:none;background:var(--card);
-border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:11.5px;
-display:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-.foot{margin-top:34px;padding-top:12px;border-top:1px solid var(--line);
-font-size:11.5px;color:var(--muted)}
-</style></head><body><div class="wrap">
-<h1>📊 株シグナル</h1>
-<div class="upd" id="upd">読み込み中…</div>
-<div id="regime"></div>
-<h2>日本株｜新規買い候補（翌営業日 寄付成行）</h2>
-<div id="jp"></div>
-<h2>日本株｜監視中の保有銘柄</h2>
-<div id="watch"></div>
-<h2>米国株｜モメンタム・ポートフォリオ（月1回入替の保有リスト）</h2>
-<div id="us"></div>
-<div class="foot">
-シグナル根拠（過去8年検証）: ★★★=勝率47%・平均+1.8%/回 ／ ★★☆=勝率42%・平均+1.8%/回
-／ 勝ち平均+16%・負け平均−8%（利大損小型）。米国株: 年率+24〜26%・最大DD−52%（上位20等金額時）。
-利確は固定額ではなく「日本株=デッドクロスまで伸ばす／米国株=月次入替で自動売却」というルールです。<br>
-本ページはバックテストに基づく情報提供であり投資助言ではありません。発注はご自身の判断で。
-</div>
+.clg{display:flex;gap:11px;font-size:10.5px;color:var(--faint);padding:2px 4px 3px;flex-wrap:wrap}
+.clg i{display:inline-block;width:11px;height:2.5px;border-radius:2px;margin-right:4px;vertical-align:3px}
+.ctip{position:absolute;top:6px;left:8px;pointer-events:none;background:#0E1116E6;
+border:1px solid var(--line);border-radius:6px;padding:3px 9px;font-size:11px;
+display:none;white-space:nowrap;z-index:5}
+.empty{color:var(--muted);background:var(--surface);border:1px dashed var(--line);
+border-radius:12px;padding:20px 14px;text-align:center;font-size:13px;line-height:1.8}
+.total{background:var(--surface2);border-radius:10px;padding:9px 13px;margin:2px 0 10px;
+font-weight:800;font-size:14.5px}
+.total .s{font-weight:400;font-size:11.5px;color:var(--muted);display:block}
+.note{background:var(--amberbg);color:var(--amber);border-radius:9px;padding:8px 12px;
+font-size:12px;margin:0 0 10px;line-height:1.6}
+.foot{margin:26px 2px 0;padding-top:12px;border-top:1px solid var(--line);
+font-size:11px;color:var(--faint);line-height:1.8}
+</style></head><body>
+<div class="hdr"><div class="mark"></div><h1>株シグナル</h1><div class="upd" id="upd">読み込み中…</div></div>
+<div class="wrap">
+  <div class="tiles" id="tiles"></div>
+  <div class="tabs" id="tabs">
+    <div class="tab on" data-t="jp">買い候補<span class="cnt" id="cjp">0</span></div>
+    <div class="tab" data-t="watch">監視中<span class="cnt" id="cw">0</span></div>
+    <div class="tab" data-t="us">米国株<span class="cnt" id="cus">0</span></div>
+  </div>
+  <div class="sec on" id="sec-jp"></div>
+  <div class="sec" id="sec-watch"></div>
+  <div class="sec" id="sec-us"></div>
+  <div class="foot">
+  シグナル根拠（過去8年検証）: ★★★=勝率47%・平均+1.8%/回 ／ ★★☆=勝率42%・平均+1.8%/回 ／
+  勝ち平均+16%・負け平均−8%。米国株: 年率+24〜26%・最大DD−52%（上位20等金額時）。
+  利確は「日本株=デッドクロスまで伸ばす／米国株=月次入替で自動売却」ルール。<br>
+  本ページはバックテストに基づく情報提供であり投資助言ではありません。発注はご自身の判断で。
+  </div>
 </div>
 <script>
 const DATA_URL = "https://jnngsfheylhfzmvqtqey.supabase.co/storage/v1/object/public/dashboard/data.json";
 const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-const yen = v => Number(v).toLocaleString("ja-JP", {maximumFractionDigits:0});
-const usd = v => "$" + Number(v).toLocaleString("en-US", {maximumFractionDigits:2});
+const yen = v => Number(v).toLocaleString("ja-JP",{maximumFractionDigits:0});
+const usd = v => "$" + Number(v).toLocaleString("en-US",{maximumFractionDigits:2});
 const pct = (v,d=1) => (v>=0?"+":"") + (v*100).toFixed(d) + "%";
 const STAR = {3:"★★★", 2:"★★☆"};
-const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = {up:"#F0454C", dn:"#33A7CE", amber:"#FFB020", ma25:"#FFA726", ma75:"#AB7DF6",
+           ink:"#E9ECF1", line:"#2A323E", faint:"#5A6270", brand:"#CF1B2B"};
 
-// ==== チャート描画 ====
-// cd:{dates,close,sma25?,sma75?} opts:{stop,entryDate,sellNow,fmt,H}
+// タブ
+document.getElementById("tabs").addEventListener("click", e=>{
+  const t = e.target.closest(".tab"); if(!t) return;
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on", x===t));
+  document.querySelectorAll(".sec").forEach(x=>x.classList.toggle("on", x.id==="sec-"+t.dataset.t));
+});
+
+// ===== ローソク足 / ラインチャート =====
 function drawChart(box, cd, opts={}){
   if (!cd || !cd.close || cd.close.length < 5) return;
   const fmt = opts.fmt || yen;
-  const W = 600, H = opts.H || 150, padL = 6, padR = 58, padT = 10, padB = 16;
-  const iw = W - padL - padR, ih = H - padT - padB;
-  const n = cd.close.length;
-  let vals = cd.close.slice();
-  ["sma25","sma75"].forEach(k => { if (cd[k]) vals = vals.concat(cd[k].filter(v=>v!=null)); });
+  const candle = !!(cd.open && cd.high && cd.low && !opts.line);
+  const W = 620, H = opts.H || 168, padL = 4, padR = 62, padT = 8, padB = 15;
+  const iw = W-padL-padR, ih = H-padT-padB, n = cd.close.length;
+  let vals = [];
+  if (candle){ for(let i=0;i<n;i++){ if(cd.high[i]!=null) vals.push(cd.high[i]); if(cd.low[i]!=null) vals.push(cd.low[i]); } }
+  else vals = cd.close.filter(v=>v!=null);
+  ["sma25","sma75"].forEach(k=>{ if(cd[k]) vals = vals.concat(cd[k].filter(v=>v!=null)); });
   if (opts.stop) vals.push(opts.stop);
   let lo = Math.min(...vals), hi = Math.max(...vals);
-  const m = (hi-lo)*0.07 || hi*0.02; lo-=m; hi+=m;
-  const X = i => padL + iw*i/(n-1);
+  const mg = (hi-lo)*0.06 || hi*0.02; lo-=mg; hi+=mg;
+  const X = i => padL + iw*(i+0.5)/n;
   const Y = v => padT + ih - ih*(v-lo)/(hi-lo);
-  const line = (arr, color, w, dash) => {
-    let d = "", started = false;
-    for (let i=0;i<n;i++){
-      const v = arr[i];
-      if (v==null){ started=false; continue; }
-      d += (started?"L":"M") + X(i).toFixed(1) + "," + Y(v).toFixed(1); started=true;
-    }
+  const line = (arr,color,w,dash)=>{
+    let d="",st=false;
+    for(let i=0;i<n;i++){ const v=arr[i];
+      if(v==null){st=false;continue;}
+      d+=(st?"L":"M")+X(i).toFixed(1)+","+Y(v).toFixed(1); st=true; }
     return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:""}/>`;
   };
-  const ink = cssv("--ink"), green = cssv("--green"), blue = cssv("--blue"),
-        red = cssv("--red"), lineC = cssv("--line"), mut = cssv("--muted"), cardC = cssv("--card");
   let g = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px">`;
-  [lo+ (hi-lo)*0.15, hi-(hi-lo)*0.15].forEach(t=>{
-    g += `<line x1="${padL}" x2="${W-padR}" y1="${Y(t)}" y2="${Y(t)}" stroke="${lineC}" stroke-width="1"/>`;
-  });
+  for(const f of [0.2,0.5,0.8]){ const t = lo+(hi-lo)*f;
+    g += `<line x1="${padL}" x2="${W-padR}" y1="${Y(t)}" y2="${Y(t)}" stroke="${C.line}" stroke-width="1"/>`;
+    g += `<text x="${W-padR+4}" y="${Y(t)+3.5}" font-size="10" fill="${C.faint}">${fmt(t)}</text>`; }
   [[0,"start"],[Math.floor(n/2),"middle"],[n-1,"end"]].forEach(([i,a])=>{
-    g += `<text x="${X(i)}" y="${H-3}" font-size="10" fill="${mut}" text-anchor="${a}">${(cd.dates[i]||"").slice(2,7)}</text>`;
-  });
-  if (cd.sma75) g += line(cd.sma75, blue, 1.6);
-  if (cd.sma25) g += line(cd.sma25, green, 1.6);
-  g += line(cd.close, ink, 2.2);
+    g += `<text x="${X(i)}" y="${H-3}" font-size="9.5" fill="${C.faint}" text-anchor="${a}">${(cd.dates[i]||"").slice(2,7)}</text>`;});
+  if (candle){
+    const bw = Math.max(1.6, Math.min(5, iw/n*0.65));
+    for(let i=0;i<n;i++){
+      const o=cd.open[i], h=cd.high[i], l=cd.low[i], c2=cd.close[i];
+      if(o==null||h==null||l==null||c2==null) continue;
+      const upC = c2>=o, col = upC?C.up:C.dn, x=X(i);
+      g += `<line x1="${x}" x2="${x}" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}" stroke-width="1"/>`;
+      const y1=Y(Math.max(o,c2)), y2=Y(Math.min(o,c2));
+      g += `<rect x="${(x-bw/2).toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,(y2-y1)).toFixed(1)}" fill="${col}"/>`;
+    }
+  } else g += line(cd.close, C.ink, 2);
+  if (cd.sma25) g += line(cd.sma25, C.ma25, 1.4);
+  if (cd.sma75) g += line(cd.sma75, C.ma75, 1.4);
   if (opts.stop){
-    g += `<line x1="${padL}" x2="${W-padR}" y1="${Y(opts.stop)}" y2="${Y(opts.stop)}" stroke="${red}" stroke-width="1.6" stroke-dasharray="6 4"/>`;
-    g += `<text x="${W-padR+4}" y="${Y(opts.stop)+4}" font-size="11" font-weight="700" fill="${red}">損切 ${fmt(opts.stop)}</text>`;
+    g += `<line x1="${padL}" x2="${W-padR}" y1="${Y(opts.stop)}" y2="${Y(opts.stop)}" stroke="${C.amber}" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+    g += `<rect x="${W-padR+1}" y="${Y(opts.stop)-8}" width="${padR-2}" height="15" rx="3" fill="${C.amber}"/>`;
+    g += `<text x="${W-padR+5}" y="${Y(opts.stop)+3.5}" font-size="10" font-weight="700" fill="#241A00">損切${fmt(opts.stop)}</text>`;
   }
   const last = cd.close[n-1];
-  if (!opts.stop || Math.abs(Y(last)-Y(opts.stop)) > 14)
-    g += `<text x="${W-padR+4}" y="${Y(last)+4}" font-size="11" font-weight="700" fill="${ink}">${fmt(last)}</text>`;
+  if (last!=null && (!opts.stop || Math.abs(Y(last)-Y(opts.stop))>16)){
+    g += `<rect x="${W-padR+1}" y="${Y(last)-8}" width="${padR-2}" height="15" rx="3" fill="#2A323E"/>`;
+    g += `<text x="${W-padR+5}" y="${Y(last)+3.5}" font-size="10" font-weight="700" fill="${C.ink}">${fmt(last)}</text>`;
+  }
   let ei = -1;
-  if (opts.entryDate){
-    ei = cd.dates.findIndex(d => d >= opts.entryDate);
-    if (ei < 0) ei = n-1;
-  } else if (opts.entryLast) ei = n-1;
-  if (ei >= 0){
-    const y = Y(cd.close[ei] ?? last);
-    g += `<path d="M${X(ei)},${y+7} l-6,11 l12,0 z" fill="${green}"/>`;
-    g += `<text x="${Math.min(X(ei), W-padR-20)}" y="${y+30}" font-size="11" font-weight="700" fill="${green}" text-anchor="middle">買$${opts.entryLast?"(翌朝)":""}</text>`.replace("買$","買");
+  if (opts.entryDate){ ei = cd.dates.findIndex(d=>d>=opts.entryDate); if(ei<0) ei=n-1; }
+  else if (opts.entryLast) ei = n-1;
+  if (ei>=0){
+    const y = Y(cd.close[ei] ?? last), x = Math.min(X(ei), W-padR-14);
+    g += `<path d="M${x},${y+6} l-5.5,10 l11,0 z" fill="${C.up}"/>`;
+    g += `<rect x="${x-12}" y="${y+17}" width="24" height="14" rx="3" fill="${C.brand}"/>`;
+    g += `<text x="${x}" y="${y+27.5}" font-size="10" font-weight="800" fill="#fff" text-anchor="middle">買</text>`;
   }
-  if (opts.sellNow){
-    const y = Y(last);
-    g += `<path d="M${X(n-1)},${y-7} l-6,-11 l12,0 z" fill="${red}"/>`;
-    g += `<text x="${X(n-1)-4}" y="${y-20}" font-size="11" font-weight="700" fill="${red}" text-anchor="end">売り</text>`;
+  if (opts.sellNow && last!=null){
+    const y = Y(last), x = X(n-1)-2;
+    g += `<path d="M${x},${y-6} l-5.5,-10 l11,0 z" fill="${C.dn}"/>`;
+    g += `<rect x="${x-24}" y="${y-31}" width="26" height="14" rx="3" fill="${C.dn}"/>`;
+    g += `<text x="${x-11}" y="${y-20.5}" font-size="10" font-weight="800" fill="#04222E" text-anchor="middle">売</text>`;
   }
-  g += `<rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>`;
   g += `</svg>`;
-  box.innerHTML = g + (cd.sma25 ? `<div class="clegend"><span><i style="background:${ink}"></i>終値</span><span><i style="background:${green}"></i>25日線</span><span><i style="background:${blue}"></i>75日線</span>${opts.stop?`<span><i style="background:${red}"></i>損切りライン</span>`:""}</div>` : "");
-  const tip = document.createElement("div"); tip.className = "ctip"; box.appendChild(tip);
+  const lg = [];
+  if (candle) lg.push(`<span><i style="background:${C.up}"></i>陽線</span><span><i style="background:${C.dn}"></i>陰線</span>`);
+  if (cd.sma25) lg.push(`<span><i style="background:${C.ma25}"></i>25日線</span>`);
+  if (cd.sma75) lg.push(`<span><i style="background:${C.ma75}"></i>75日線</span>`);
+  if (opts.stop) lg.push(`<span><i style="background:${C.amber}"></i>損切りライン</span>`);
+  box.innerHTML = g + (lg.length?`<div class="clg">${lg.join("")}</div>`:"");
+  const tip = document.createElement("div"); tip.className="ctip"; box.appendChild(tip);
   const svg = box.querySelector("svg");
-  const move = e => {
+  const mv = e=>{
     const r = svg.getBoundingClientRect();
-    const cx = (e.touches? e.touches[0].clientX : e.clientX) - r.left;
-    let i = Math.round(cx/r.width*(n-1)); i = Math.max(0, Math.min(n-1, i));
-    tip.textContent = `${cd.dates[i]}  ${fmt(cd.close[i])}`;
+    const cx = (e.touches?e.touches[0].clientX:e.clientX)-r.left;
+    let i = Math.floor(cx/r.width*n); i = Math.max(0,Math.min(n-1,i));
+    const parts = [cd.dates[i]];
+    if (candle && cd.open[i]!=null) parts.push(`始${fmt(cd.open[i])} 高${fmt(cd.high[i])} 安${fmt(cd.low[i])} 終${fmt(cd.close[i])}`);
+    else if (cd.close[i]!=null) parts.push(fmt(cd.close[i]));
+    tip.textContent = parts.join("　");
     tip.style.display = "block";
-    tip.style.left = Math.min(r.width-130, Math.max(0, cx+8)) + "px";
   };
-  svg.addEventListener("mousemove", move);
-  svg.addEventListener("touchmove", move, {passive:true});
-  svg.addEventListener("mouseleave", ()=> tip.style.display="none");
-  svg.addEventListener("touchend", ()=> setTimeout(()=>tip.style.display="none", 1500));
+  svg.addEventListener("mousemove", mv);
+  svg.addEventListener("touchmove", mv, {passive:true});
+  svg.addEventListener("mouseleave", ()=>tip.style.display="none");
+  svg.addEventListener("touchend", ()=>setTimeout(()=>tip.style.display="none",1600));
 }
 
 function render(d){
-  document.getElementById("upd").textContent =
-    `更新 ${d.updated} ／ データ ${d.data_date} 時点`;
-  const reg = d.regime || {};
-  let rh = reg.ok
-    ? `<span class="badge">🟢 地合い良好</span>`
-    : `<span class="badge ng">🔴 地合い悪化・新規買い停止</span>`;
-  if (reg.n225) rh += `<div class="regdetail">日経平均 ${yen(reg.n225)} ／ 200日線 ${yen(reg.sma200)}（乖離 ${pct(reg.n225/reg.sma200-1)}）</div>`;
-  document.getElementById("regime").innerHTML = rh;
-  const charts = d.charts || {};
+  document.getElementById("upd").innerHTML =
+    `更新 ${esc(d.updated)}<br>データ ${esc(d.data_date)} 時点`;
+  const reg = d.regime||{}, charts = d.charts||{};
+  const picks = (reg.ok? d.picks:[])||[], watch = d.watch||[], port = d.port||[];
+  const meta = d.us_meta||{};
+  const total = port.reduce((s,p)=>s+(p.cost||0),0);
 
-  const jp = document.getElementById("jp");
-  const picks = d.picks || [];
-  if (!reg.ok) jp.innerHTML = `<div class="empty">地合い悪化中のため新規買いは停止しています</div>`;
-  else if (!picks.length) jp.innerHTML = `<div class="empty">本日の新規候補はありません</div>`;
-  else {
-    jp.innerHTML = picks.map((p,i) => `
+  // サマリータイル
+  document.getElementById("tiles").innerHTML = `
+    <div class="tile ${reg.ok?"ok":"ng"}"><div class="k">地合い（日経）</div>
+      <div class="v">${reg.ok?"良好":"悪化"}</div>
+      <div class="s num">${reg.n225?`${yen(reg.n225)}（200日線${pct(reg.n225/reg.sma200-1,1)}）`:"—"}</div></div>
+    <div class="tile"><div class="k">本日の買い候補</div><div class="v num">${picks.length}<span style="font-size:11px">件</span></div>
+      <div class="s">${reg.ok?"寄付成行で検討":"新規買い停止中"}</div></div>
+    <div class="tile"><div class="k">監視中（日本株）</div><div class="v num">${watch.length}<span style="font-size:11px">銘柄</span></div>
+      <div class="s">${watch.filter(w=>/売り|手仕舞い/.test(w.action)).length}件 要売却</div></div>
+    <div class="tile"><div class="k">米国株 保有</div><div class="v num">${port.length?usd(total):"—"}</div>
+      <div class="s">${port.length?port.length+"銘柄・月次入替":"未構築"}</div></div>`;
+  document.getElementById("cjp").textContent = picks.length;
+  document.getElementById("cw").textContent = watch.length;
+  document.getElementById("cus").textContent = port.length;
+
+  // 買い候補
+  const jp = document.getElementById("sec-jp");
+  let jpH = reg.ok
+    ? `<div class="banner ok">🟢 地合い良好 <span class="d">新規買いシグナル有効・翌営業日の寄付成行で発注</span></div>`
+    : `<div class="banner ng">🔴 地合い悪化・新規買い停止中 <span class="d">日経平均が回復すると自動で再開します</span></div>`;
+  if (!reg.ok || !picks.length)
+    jpH += `<div class="empty">${reg.ok?"本日の新規候補はありません":"地合い悪化中は候補を出しません。<br>保有銘柄の監視は「監視中」タブで継続しています"}</div>`;
+  else jpH += picks.map((p,i)=>`
     <div class="card">
-      <div class="cardhead"><span class="code">${esc(p.code)}</span>
+      <div class="chead"><span class="chip buy">買</span><span class="code">${esc(p.code)}</span>
         <span class="name">${esc(p.name)}</span><span class="stars">${STAR[p.score]||"★"}</span></div>
-      <div class="row big">${yen(p.close)}円 × ${p.shares}株 ≒ <b>${(p.amount/10000).toFixed(1)}万円</b>
-        <span class="unit">${p.shares>=100?"現物":"かぶミニ(1株単位)"}・寄付成行</span></div>
-      <div class="row"><span class="lbl">損切り</span><b class="stopv">${yen(p.stop)}円</b><span class="unit">逆指値 −10%</span>
-        <span class="lbl" style="margin-left:10px">利確</span>デッドクロスまで保有<span class="unit">最長60営業日</span></div>
+      <div class="pricerow"><span class="px num">${yen(p.close)}<span style="font-size:12px">円</span></span>
+        <span class="mut">× ${p.shares}株 ≒ <b style="color:var(--ink)">${(p.amount/10000).toFixed(1)}万円</b>（${p.shares>=100?"現物":"かぶミニ"}）</span></div>
+      <div class="orow">
+        <div class="obox stop"><div class="t">損切り（逆指値）</div><b class="num">${yen(p.stop)}円</b> <span class="mut">−10%</span></div>
+        <div class="obox"><div class="t">利確ルール</div><b>デッドクロスまで保有</b> <span class="mut">最長60営業日</span></div>
+        <div class="obox"><div class="t">流動性</div><b class="num">${p.turnover_oku.toFixed(1)}億円</b><span class="mut">/日</span></div>
+      </div>
       <div class="chartbox" id="pc${i}"></div>
     </div>`).join("");
-    picks.forEach((p,i) => drawChart(document.getElementById("pc"+i), charts[p.ticker],
-      {stop: p.stop, entryLast: true}));
-  }
+  jp.innerHTML = jpH;
+  picks.forEach((p,i)=>drawChart(document.getElementById("pc"+i), charts[p.ticker], {stop:p.stop, entryLast:true}));
 
-  const watch = d.watch || [];
-  const wEl = document.getElementById("watch");
-  if (!watch.length) wEl.innerHTML = `<div class="empty">監視中の銘柄はありません</div>`;
+  // 監視中
+  const w = document.getElementById("sec-watch");
+  if (!watch.length) w.innerHTML = `<div class="empty">監視中の銘柄はありません。<br>買い候補を購入したら、翌日から自動でここに表示されます</div>`;
   else {
-    wEl.innerHTML = watch.map((w,i) => {
-      const acls = /売り|手仕舞い/.test(w.action) ? "act-sell" : (/⚠/.test(w.action) ? "act-warn" : "");
+    w.innerHTML = watch.map((x,i)=>{
+      const sell = /売り|手仕舞い/.test(x.action);
+      const cls = sell?"sell":(/⚠/.test(x.action)?"warn":"hold");
       return `<div class="card">
-      <div class="cardhead"><span class="code">${esc(w.code)}</span>
-        <span class="name">${esc(w.name)}</span>
-        <span class="${w.chg>=0?"pos":"neg"}" style="font-weight:700">${pct(w.chg)}</span>
-        <span class="sub">${w.held}日目</span></div>
-      <div class="act ${acls}">${esc(w.action)}</div>
+      <div class="chead">${sell?'<span class="chip sell">売</span>':""}<span class="code">${esc(x.code)}</span>
+        <span class="name">${esc(x.name)}</span>
+        <span class="pl ${x.chg>=0?"up":"dn"} num">${pct(x.chg)}</span></div>
+      <div class="pricerow"><span class="px num">${yen(x.close)}<span style="font-size:12px">円</span></span>
+        <span class="mut num">保有${x.held}日目 ／ 損切りまで ${pct(x.close/x.stop-1)}</span></div>
+      <div class="actline ${cls}">${esc(x.action)}</div>
       <div class="chartbox" id="wc${i}"></div>
     </div>`;}).join("");
-    watch.forEach((w,i) => drawChart(document.getElementById("wc"+i), charts[w.ticker],
-      {stop: w.stop, entryDate: w.added, sellNow: /売り|手仕舞い/.test(w.action)}));
+    watch.forEach((x,i)=>drawChart(document.getElementById("wc"+i), charts[x.ticker],
+      {stop:x.stop, entryDate:x.added, sellNow:/売り|手仕舞い/.test(x.action)}));
   }
 
-  const us = document.getElementById("us");
-  const port = d.port || [];
-  if (!port.length) us.innerHTML = `<div class="empty">初回リバランス前です</div>`;
+  // 米国株
+  const us = document.getElementById("sec-us");
+  if (!port.length) us.innerHTML = `<div class="empty">保有リスト未構築です。<br>「通知テスト.command」→ 2 を実行すると<br>モメンタム上位の推奨ポートフォリオが生成されます</div>`;
   else {
-    const total = port.reduce((s,p)=>s+(p.cost||0),0);
-    const meta = d.us_meta || {};
-    us.innerHTML = port.map((p,i) => `
+    us.innerHTML = `<div class="total num">評価総額 ${usd(total)}${meta.budget_usd?` <span class="mut">／ 予算 ${usd(meta.budget_usd)}</span>`:""}
+      <span class="s">次回入替: 来月第1営業日（土曜に健全性チェック通知）</span></div>`
+    + ((meta.skipped||[]).length?`<div class="note">予算不足でスキップ中の上位銘柄: ${esc(meta.skipped.slice(0,6).join(", "))}<br>資金を増やすと自動で上位から組み入れます</div>`:"")
+    + port.map((p,i)=>`
     <div class="card">
-      <div class="cardhead"><span class="rank">勢い${p.rank}位</span><span class="code">${esc(p.ticker)}</span>
+      <div class="chead"><span class="chip rank">勢い${p.rank}位</span><span class="code">${esc(p.ticker)}</span>
         <span class="name">${esc(p.name)}</span>
-        <span class="pos" style="font-weight:700">12ヶ月${pct(p.mom,0)}</span></div>
-      <div class="row">${usd(p.close)} × ${p.shares}株 = <b>${usd(p.cost)}</b>
-        <span class="unit">売り時: 月初入替 or 勢い圐外通知</span></div>
+        <span class="pl up num">${pct(p.mom,0)}<span style="font-size:10px">/12ヶ月</span></span></div>
+      <div class="pricerow"><span class="px num">${usd(p.close)}</span>
+        <span class="mut">× ${p.shares}株 = <b style="color:var(--ink)">${usd(p.cost)}</b></span></div>
       <div class="chartbox" id="uc${i}"></div>
     </div>`).join("")
-    + `<div class="total">合計 ${usd(total)}${meta.budget_usd?` ／ 予算 ${usd(meta.budget_usd)}`:""}
-       <span class="sub">　次回入替: 来月第1営業日</span></div>`
-    + ((meta.skipped||[]).length ? `<div class="note">予算不足でスキップ中の上位銘柄: ${esc(meta.skipped.slice(0,6).join(", "))}</div>` : "");
-    port.forEach((p,i) => drawChart(document.getElementById("uc"+i), charts[p.ticker],
-      {entryDate: d.us_entry_date, fmt: usd, H: 130}));
+    + `<div class="total num">合計 ${usd(total)}${meta.budget_usd?` <span class="mut">／ 予算 ${usd(meta.budget_usd)}</span>`:""}
+       <span class="s">　次回入替: 来月第1営業日</span></div>`;
+    port.forEach((p,i)=>drawChart(document.getElementById("uc"+i), charts[p.ticker],
+      {entryDate:d.us_entry_date, fmt:usd, H:140, line:true}));
   }
 }
 
 fetch(DATA_URL + "?t=" + Date.now(), {cache:"no-store"})
-  .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+  .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
   .then(render)
-  .catch(e => {
-    document.getElementById("upd").textContent = "データを取得できませんでした（初回更新前かネットワークエラー）";
+  .catch(e=>{
+    document.getElementById("upd").textContent = "データ取得エラー";
+    document.getElementById("sec-jp").innerHTML =
+      `<div class="empty">データを取得できませんでした。<br>「通知テスト.command」→ 4 でデータを生成してください</div>`;
   });
 </script>
 </body></html>
