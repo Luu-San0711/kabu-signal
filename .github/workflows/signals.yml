@@ -1,0 +1,95 @@
+# 株シグナル クラウド自動実行（GitHub Actions・外部サービス不要）
+# 平日19:35 JST: 日本株スキャン / 毎日09:05 JST: 米国株（月初=リバランス, 土曜=週次チェック）
+name: kabu-signal
+
+on:
+  schedule:
+    - cron: '35 10 * * 1-5'   # 平日 19:35 JST（UTC 10:35）
+    - cron: '5 0 * * *'       # 毎日 09:05 JST（UTC 00:05）
+  workflow_dispatch:
+    inputs:
+      job:
+        description: '手動実行する処理'
+        type: choice
+        default: jp
+        options: [jp, us-rebalance, us-health, dashboard]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kabu-signal
+  cancel-in-progress: false
+
+env:
+  TZ: Asia/Tokyo
+  PYTHONUNBUFFERED: '1'
+  GH_TOKEN: ${{ github.token }}
+  LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: ライブラリ導入
+        run: pip install -r requirements.txt
+
+      - name: 価格データのキャッシュ復元
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: kabu-data-${{ github.run_id }}
+          restore-keys: kabu-data-
+
+      - name: 価格データの確保（キャッシュ→バックアップ→新規取得の順）
+        run: python tool/cloud_sync.py ensure-data
+
+      - name: ジョブ実行
+        id: job
+        run: |
+          JOB="${{ github.event.inputs.job }}"
+          if [ -z "$JOB" ]; then
+            if [ "${{ github.event.schedule }}" = "35 10 * * 1-5" ]; then JOB=jp; else JOB=us-auto; fi
+          fi
+          echo "JOB=$JOB"
+          case "$JOB" in
+            jp)           python tool/daily_jp.py ;;
+            us-auto)      python tool/us_jobs.py ;;
+            us-rebalance) python tool/us_jobs.py rebalance ;;
+            us-health)    python tool/us_jobs.py health ;;
+            dashboard)    (cd tool && python dashboard.py) ;;
+          esac
+
+      - name: 価格データのキャッシュ保存
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: kabu-data-${{ github.run_id }}
+
+      - name: 価格データのバックアップ（GitHub Release）
+        if: always()
+        run: python tool/cloud_sync.py backup
+
+      - name: 監視状態とダッシュボードを保存（git commit）
+        if: always()
+        run: |
+          git config user.name "kabu-signal-bot"
+          git config user.email "kabu-signal-bot@users.noreply.github.com"
+          git add -A tool/state data.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "自動実行: $(date '+%Y-%m-%d %H:%M') 状態更新"
+            git pull --rebase origin main || true
+            git push
+          fi

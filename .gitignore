@@ -1,0 +1,6 @@
+data/
+tool/__pycache__/
+dashboard.html
+.venv/
+tool/state/tool.log
+tool/state/launchd.log

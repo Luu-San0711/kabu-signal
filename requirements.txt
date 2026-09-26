@@ -1,0 +1,8 @@
+yfinance>=0.2.50
+pandas>=2.0
+pyarrow>=14
+numpy
+requests
+certifi
+xlrd
+openpyxl

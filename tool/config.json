@@ -1,0 +1,23 @@
+{
+  "line_channel_access_token": "",
+  "supabase_url": "",
+  "supabase_service_key": "",
+  "supabase_bucket": "dashboard",
+  "jp": {
+    "enabled": true,
+    "top_n": 5,
+    "min_price": 100,
+    "min_turnover": 50000000,
+    "budget_per_trade_yen": 50000,
+    "stop_pct": 0.1,
+    "max_hold_days": 60
+  },
+  "us": {
+    "enabled": true,
+    "top_n": 20,
+    "buffer_rank": 60,
+    "universe_liquidity_top": 500,
+    "total_budget_yen": 100000
+  },
+  "github_pages_url": "https://luu-san0711.github.io/kabu-signal/"
+}

@@ -1,0 +1,72 @@
+{
+ "holdings": [
+  "AXTI",
+  "HUT",
+  "AEHR",
+  "AAOI",
+  "DOCN"
+ ],
+ "last_rebalance": "2026-08-23",
+ "portfolio": [
+  {
+   "ticker": "AXTI",
+   "name": "AXT Inc",
+   "mom": 15.748228073120117,
+   "close": 70.73999786376953,
+   "rank": 2,
+   "shares": 1,
+   "cost": 70.73999786376953
+  },
+  {
+   "ticker": "HUT",
+   "name": "Hut 8 Corp.",
+   "mom": 3.706460952758789,
+   "close": 80.86000061035156,
+   "rank": 8,
+   "shares": 1,
+   "cost": 80.86000061035156
+  },
+  {
+   "ticker": "AEHR",
+   "name": "Aehr Test Systems",
+   "mom": 3.2165746688842773,
+   "close": 101.7300033569336,
+   "rank": 11,
+   "shares": 1,
+   "cost": 101.7300033569336
+  },
+  {
+   "ticker": "AAOI",
+   "name": "Applied Optoelectronics, Inc.",
+   "mom": 3.03993558883667,
+   "close": 124.81999969482422,
+   "rank": 12,
+   "shares": 1,
+   "cost": 124.81999969482422
+  },
+  {
+   "ticker": "DOCN",
+   "name": "DigitalOcean Holdings, Inc.",
+   "mom": 2.91817307472229,
+   "close": 115.63999938964844,
+   "rank": 13,
+   "shares": 1,
+   "cost": 115.63999938964844
+  }
+ ],
+ "meta": {
+  "budget_usd": 629.1682299228938,
+  "fx": 158.94000244140625,
+  "skipped": [
+   "SNDK($1,596)",
+   "MU($967)",
+   "WDC($459)",
+   "LITE($867)",
+   "STX($850)",
+   "RVMD($209)",
+   "CIEN($396)",
+   "TSEM($223)"
+  ],
+  "data_date": "2026-08-21"
+ }
+}
