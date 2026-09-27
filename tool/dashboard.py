@@ -25,7 +25,7 @@ def build_data(cfg):
     port = pf.load()
     sig = sl.load_state("signals.json", {})
     fx = float(sig.get("fx") or sl.usdjpy())
-    prices = st.latest_prices(port)
+    prices = st.latest_prices(port, fx)
     val = st.valuation(port, prices, fx)
     pend = pf.pending_orders(port)
     today = time.strftime("%Y-%m-%d")
@@ -43,16 +43,21 @@ def build_data(cfg):
         charts.update(sl.chart_series("jp", jp_t, days=130, smas=(25, 75)))
     except Exception as e:
         sl.log(f"JPチャート生成スキップ: {str(e)[:120]}")
-    us_t = {x["ticker"] for x in pf.open_positions(port, "us")} | {o["ticker"] for o in pend if o["market"] == "us"} | {port["us"].get("ticker", "SPMO")}
+    us_t = {x["ticker"] for x in pf.open_positions(port, "us")} | {o["ticker"] for o in pend if o["market"] == "us"}
     for t in us_t:
         ch = _etf_chart(t)
         if ch:
             charts[t] = ch
+    fid = port["us"].get("ticker", "NDX100")
+    ch = _etf_chart(port["us"].get("proxy") or "QQQ")
+    if ch:
+        ch["close"] = [round(v * fx, 0) for v in ch["close"]]  # 円換算の目安
+        charts[fid] = ch
 
     sma = {s.get("position_id"): s.get("sma25") for s in sig.get("jp_status", [])}
     for r in val["rows"]:
         r["sma25"] = sma.get(r["id"])
-    us_val = sum(r["value_yen"] for r in val["rows"] if r["market"] == "us")
+    us_val = sum(r["value_yen"] for r in val["rows"] if r["market"] in ("us", "fund"))
     exposure_pct = (val["total_yen"] - port["cash_yen"]) / val["total_yen"] if val["total_yen"] else 0
     hist = port.get("history", [])
     ytd = None
@@ -84,7 +89,7 @@ def build_data(cfg):
         "ytd_yen": ytd,
         "exposure_pct": exposure_pct,
         "us_value_yen": us_val,
-        "us": {**port["us"], **{k: sig.get("us", {}).get(k) for k in ("exposure_raw", "vol", "price", "date")}},
+        "us": {**port["us"], **{k: sig.get("us", {}).get(k) for k in ("exposure_raw", "vol", "price", "date", "name")}},
         "todo": todo,
         "recent": recent,
         "positions": val["rows"],

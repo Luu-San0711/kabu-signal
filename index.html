@@ -126,6 +126,8 @@ const wd = s => "日月火水木金土"[new Date(s + "T00:00:00").getDay()];
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const fmtPx = (o, v) => o.market === "us" ? "$" + Number(v).toFixed(2) : yen(v);
 const isUS = o => o.market === "us";
+const isFund = o => o.market === "fund";
+const nm = o => isFund(o) ? (o.name || "NASDAQ-100") : isUS(o) ? o.ticker : o.name;
 
 function issueUrl(title, obj) {
   const body = "アプリからの記録です。そのまま「Submit new issue」を押してください。\n\n```\n" + JSON.stringify(obj) + "\n```";
@@ -153,7 +155,7 @@ function viewToday() {
   h += assetBlock();
   const rec = (D.recent || []).slice(0, 5);
   if (rec.length) {
-    h += `<div class="sec">最近の記録</div>` + rec.map(o => `<div class="mini"><span class="d num nw">${md(o.fill_date || o.date)}</span><span class="t nw">${o.side === "buy" ? "買" : "売"} ${esc(o.market === "us" ? o.ticker : o.name)} ${o.fill_shares ?? o.shares}株 ${o.fill_price ? `<span class="num">@${fmtPx(o, o.fill_price)}</span>` : ""}</span><span class="r nw ${o.status === "skipped" ? "" : "up"}" style="${o.status === "skipped" ? "color:var(--faint)" : ""}">${o.status === "skipped" ? "見送り" : o.status === "auto" ? "自動記録" : o.status === "expired" ? "期限切れ" : "記録済"}</span></div>`).join("") + `<div style="border-top:1px solid var(--line)"></div>`;
+    h += `<div class="sec">最近の記録</div>` + rec.map(o => `<div class="mini"><span class="d num nw">${md(o.fill_date || o.date)}</span><span class="t nw">${o.side === "buy" ? "買" : "売"} ${esc(nm(o))} ${isFund(o) ? `<span class="num">${yen((o.fill_shares ?? o.shares) * (o.fill_price || o.ref_price))}円</span>` : `${o.fill_shares ?? o.shares}株 ${o.fill_price ? `<span class="num">@${fmtPx(o, o.fill_price)}</span>` : ""}`}</span><span class="r nw ${o.status === "skipped" ? "" : "up"}" style="${o.status === "skipped" ? "color:var(--faint)" : ""}">${o.status === "skipped" ? "見送り" : o.status === "auto" ? "自動記録" : o.status === "expired" ? "期限切れ" : "記録済"}</span></div>`).join("") + `<div style="border-top:1px solid var(--line)"></div>`;
   }
   if (!D.cash_confirmed) h += `<div class="note">現金は推定値です。「その他 → 設定」で実際の購入可能金額に直してください</div>`;
   return h;
@@ -162,22 +164,30 @@ function viewToday() {
 function orderRow(o) {
   const id = o.id, isOpen = !!open[id];
   const buy = o.side === "buy";
-  const name = isUS(o) ? o.ticker : `${o.code} ${o.name}`;
+  const name = isFund(o) ? "NASDAQ-100" : isUS(o) ? o.ticker : `${o.code} ${o.name}`;
   let st, tagc = buy ? "" : "sell";
   if (o.status === "pending") st = `<span class="st ${isOpen ? "on" : ""}">未記録 ${isOpen ? "⌄" : "›"}</span>`;
   else if (o.status === "auto") { st = `<span class="st">自動記録</span>`; tagc = "done"; }
   else st = `<span class="st">${o.status === "skipped" ? "見送り" : "記録済"}</span>`;
-  const amt = isUS(o) ? `約$${Math.round(o.ref_price * o.shares).toLocaleString()}` : `約${yen(o.ref_price * o.shares)}円`;
+  const fAmt = o.amount_yen || Math.round(o.ref_price * o.shares);
+  const amt = isFund(o) ? `${yen(fAmt)}円` : isUS(o) ? `約$${Math.round(o.ref_price * o.shares).toLocaleString()}` : `約${yen(o.ref_price * o.shares)}円`;
   const desc = o.status === "auto" ? esc(o.note || o.reason)
-    : `寄付成行 · ${amt}${buy && o.stop ? ` · 同時に逆指値 ${yen(o.stop)}円` : ""}${!buy ? ` · ${esc(o.reason)}` : ""}${buy && isUS(o) ? ` · ${esc(o.reason)}` : ""}`;
-  let h = `<div class="row ${o.status === "pending" ? "tap" : ""}" data-toggle="${id}"><div class="top"><span class="tag ${tagc}">${o.status === "auto" ? "済" : buy ? "買" : "売"}</span><span class="ttl num nw">${esc(name)} <small>${o.shares}株</small></span>${st}</div><div class="desc nw">${desc}</div>`;
+    : isFund(o) ? `楽天・プラス（投信）· 15:30までに金額指定`
+    : `かぶミニ寄付（成行） · ${amt}${buy && o.stop ? ` · 損切り ${yen(o.stop)}円（終値で判定）` : ""}${!buy ? ` · ${esc(o.reason)}` : ""}${buy && isUS(o) ? ` · ${esc(o.reason)}` : ""}`;
+  let h = `<div class="row ${o.status === "pending" ? "tap" : ""}" data-toggle="${id}"><div class="top"><span class="tag ${tagc}">${o.status === "auto" ? "済" : buy ? "買" : "売"}</span><span class="ttl num nw">${esc(name)} <small>${isFund(o) ? yen(fAmt) + "円" : o.shares + "株"}</small></span>${st}</div><div class="desc nw">${desc}</div>`;
   if (o.status === "pending" && isOpen) {
     const stop = buy && !isUS(o);
+    if (isFund(o)) {
+      h += `<div class="form"><label class="hi"><span>${buy ? "買った" : "売った"}金額（円）</span><input inputmode="numeric" id="amt-${id}" value="${yen(fAmt)}"></label>
+      <label><span>注文日</span><input id="dt-${id}" value="${today()}"></label></div>
+      <div class="btns"><button class="btn" data-fill="${id}">記録する</button><button class="btn ghost" data-skip="${id}">見送った</button></div>`;
+      return h + `</div>`;
+    }
     h += `<div class="form" data-stop="${id}">
       <label><span>株数</span><input inputmode="numeric" id="sh-${id}" value="${o.shares}"></label>
       <label><span>約定日</span><input id="dt-${id}" value="${today()}"></label>
       <label class="hi"><span>約定単価（実際の数字に直す）</span><input inputmode="decimal" id="px-${id}" value="${isUS(o) ? o.ref_price.toFixed(2) : o.ref_price}"></label>
-      ${stop ? `<label><span>逆指値（取得単価 −10%）</span><input disabled id="st-${id}" value="${yen(o.ref_price * 0.9)}"></label>` : `<label><span>${isUS(o) ? "為替（円/$）" : "備考"}</span><input disabled value="${isUS(o) ? Math.round(o.fx || D.fx) : "-"}"></label>`}
+      ${stop ? `<label><span>損切りライン（取得 −10%）</span><input disabled id="st-${id}" value="${yen(o.ref_price * 0.9)}"></label>` : `<label><span>${isUS(o) ? "為替（円/$）" : "備考"}</span><input disabled value="${isUS(o) ? Math.round(o.fx || D.fx) : "-"}"></label>`}
     </div>
     <div class="btns"><button class="btn" data-fill="${id}">記録する</button><button class="btn ghost" data-skip="${id}">見送った</button></div>`;
   }
@@ -208,16 +218,17 @@ function viewHold() {
 
 function posRow(x) {
   const id = x.id, isOpen = !!open[id];
-  const us = x.market === "us";
-  const name = us ? x.ticker : `${x.code} ${x.name}`;
-  const meta = us ? `露出 ${Math.round((D.us?.exposure ?? 1) * 100)}% · 米国コア · 取得 $${x.entry_price.toFixed(2)}`
-    : `取得 ${yen(x.entry_price)} · 逆指値 ${yen(x.stop)} · ${x.sma25 ? "25日線 " + yen(x.sma25) : "保有 " + heldDays(x) + "日"}`;
-  let h = `<div class="row pos tap" data-toggle="${id}"><div class="top"><div class="l"><span class="n num nw">${esc(name)} <small>${x.shares}株</small></span><span class="m nw">${meta}</span></div><div class="r"><span class="v num nw">${yen(x.value_yen)}円</span><span class="p num nw ${cls(x.pnl_pct)}">${pct(x.pnl_pct)}</span></div></div>`;
+  const us = x.market === "us" || x.market === "fund", fund = x.market === "fund";
+  const name = fund ? "NASDAQ-100" : us ? x.ticker : `${x.code} ${x.name}`;
+  const meta = fund ? `楽天・プラス · 露出 ${Math.round((D.us?.exposure ?? 1) * 100)}% · 投資額 ${yen(x.cost_yen)}円`
+    : us ? `露出 ${Math.round((D.us?.exposure ?? 1) * 100)}% · 米国コア · 取得 $${x.entry_price.toFixed(2)}`
+    : `取得 ${yen(x.entry_price)} · 損切り ${yen(x.stop)} · ${x.sma25 ? "25日線 " + yen(x.sma25) : "保有 " + heldDays(x) + "日"}`;
+  let h = `<div class="row pos tap" data-toggle="${id}"><div class="top"><div class="l"><span class="n num nw">${esc(name)} <small>${fund ? "投信" : x.shares + "株"}</small></span><span class="m nw">${meta}</span></div><div class="r"><span class="v num nw">${yen(x.value_yen)}円</span><span class="p num nw ${cls(x.pnl_pct)}">${pct(x.pnl_pct)}</span></div></div>`;
   if (isOpen) {
     h += chart(x);
     const dist = x.stop ? (x.price / x.stop - 1) : null;
-    h += `<div class="g3"><div><div class="k nw">現在値</div><div class="v num nw">${us ? "$" + x.price.toFixed(2) : yen(x.price)}</div></div><div><div class="k nw">${us ? "損益" : "損切りまで"}</div><div class="v num nw ${us ? cls(x.pnl_yen) : ""}">${us ? sgn(x.pnl_yen) + "円" : dist != null ? "−" + (dist * 100).toFixed(1) + "%" : "-"}</div></div><div><div class="k nw">保有日数</div><div class="v num nw">${heldDays(x)}日</div></div></div>`;
-    h += `<div class="btns"><button class="btn ghost sm" data-editpos="${id}">株数・単価を直す</button><button class="btn ghost sm" data-delpos="${id}">保有から外す</button></div>`;
+    h += `<div class="g3"><div><div class="k nw">${fund ? "評価額（目安）" : "現在値"}</div><div class="v num nw">${fund ? yen(x.value_yen) + "円" : us ? "$" + x.price.toFixed(2) : yen(x.price)}</div></div><div><div class="k nw">${us ? "損益" : "損切りまで"}</div><div class="v num nw ${us ? cls(x.pnl_yen) : ""}">${us ? sgn(x.pnl_yen) + "円" : dist != null ? "−" + (dist * 100).toFixed(1) + "%" : "-"}</div></div><div><div class="k nw">保有日数</div><div class="v num nw">${heldDays(x)}日</div></div></div>`;
+    h += `<div class="btns">${fund ? "" : `<button class="btn ghost sm" data-editpos="${id}">株数・単価を直す</button>`}<button class="btn ghost sm" data-delpos="${id}">保有から外す</button></div>`;
   }
   return h + `</div>`;
 }
@@ -238,7 +249,7 @@ function chart(x) {
   s += `<path d="${path(close)}" fill="none" stroke="#17181C" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
   const last = close[close.length - 1];
   s += `<circle cx="${W}" cy="${Y(last)}" r="3.5" fill="#17181C"/></svg>`;
-  if (x.stop && x.stop >= lo) s += `<span class="lab num" style="top:${Y(x.stop) + 2}px;color:#D6433B">逆指値 ${yen(x.stop)}</span>`;
+  if (x.stop && x.stop >= lo) s += `<span class="lab num" style="top:${Y(x.stop) + 2}px;color:#D6433B">損切り ${yen(x.stop)}</span>`;
   s += `<span class="lab num" style="left:0;top:0;color:var(--muted);font-weight:600">${close.length}日</span></div>`;
   return s;
 }
@@ -253,7 +264,7 @@ function viewMore() {
   let h = `<div class="head"><div class="sub nw">最終更新 ${esc(D.updated?.slice(5).replace("-", "/") || "")} · 正常</div><h1 class="nw">その他</h1></div><div class="list">`;
   h += `<div class="menu" data-sub="cand"><span class="t nw">候補リスト</span><span class="r nw">監視 ${(D.candidates || []).length} ›</span></div>`;
   h += `<div class="menu" data-sub="perf"><span class="t nw">成績</span><span class="r nw num ${closed.length ? cls(closed.reduce((s, x) => s + (x.pnl_yen || 0), 0)) : ""}">${closed.length ? `決済${closed.length}回 · 勝率${Math.round(wins / closed.length * 100)}% ›` : "まだ決済なし ›"}</span></div>`;
-  h += `<div class="menu" data-sub="regime"><span class="t nw">相場の状態</span><span class="r nw">${reg.ok ? "日本株 買いOK" : reg.bull === false ? "日経が200日線割れ" : reg.calm === false ? "急落中" : "-"} · SPMO露出${Math.round((u.exposure ?? 1) * 100)}% ›</span></div>`;
+  h += `<div class="menu" data-sub="regime"><span class="t nw">相場の状態</span><span class="r nw">${reg.ok ? "日本株 買いOK" : reg.bull === false ? "日経が200日線割れ" : reg.calm === false ? "急落中" : "-"} · 米国コア露出${Math.round((u.exposure ?? 1) * 100)}% ›</span></div>`;
   h += `<div class="menu" data-sub="log"><span class="t nw">記録の履歴</span><span class="r nw">${(D.events || []).length}件 ›</span></div></div>`;
   h += `<div class="sec">設定</div>`;
   h += `<div class="set" style="border-top:1px solid var(--line)"><div class="l"><span class="t nw">購入可能金額</span><span class="s nw">${D.cash_confirmed ? "記録すると自動で増減。ズレたらここで直す" : "推定値です。実際の金額に直してください"}</span></div><span class="val"><input inputmode="numeric" id="cash-in" value="${yen(D.cash_yen)}" data-orig="${D.cash_yen}"><small>円</small></span><button class="btn sm save" data-cash="1" hidden>保存</button></div>`;
@@ -280,14 +291,14 @@ function viewSub() {
     h += `<div class="sub nw">決済済みの取引</div><h1 class="nw">成績</h1></div>`;
     h += `<div class="asset"><div class="lbl nw">決済損益の合計</div><div class="big num nw ${cls(tot)}">${sgn(tot)}<small>円</small></div><div class="chg nw" style="color:var(--muted);font-weight:500">${closed.length}回 · 勝ち ${closed.filter(x => x.pnl_yen > 0).length} · 負け ${closed.filter(x => x.pnl_yen <= 0).length}</div></div>`;
     if (H.length > 1) h += `<div class="sec">資産の推移（毎週土曜）</div>` + H.slice(-12).map(r => `<div class="mini"><span class="d num nw">${md(r.date)}</span><span class="t num nw">${yen(r.total_yen)}円</span><span class="r num nw" style="color:var(--muted)">現金 ${yen(r.cash_yen)}</span></div>`).join("") + `<div style="border-top:1px solid var(--line)"></div>`;
-    h += `<div class="sec">決済履歴</div>` + (closed.length ? closed.map(x => `<div class="mini"><span class="d num nw">${md(x.exit_date)}</span><span class="t nw">${esc(x.market === "us" ? x.ticker : x.name)} ${x.exit_reason ? `<span>${esc(x.exit_reason)}</span>` : ""}</span><span class="r num nw ${cls(x.pnl_yen)}">${sgn(x.pnl_yen)}円</span></div>`).join("") : `<div class="mini"><span class="t" style="color:var(--muted)">まだありません</span></div>`) + `<div style="border-top:1px solid var(--line)"></div>`;
+    h += `<div class="sec">決済履歴</div>` + (closed.length ? closed.map(x => `<div class="mini"><span class="d num nw">${md(x.exit_date)}</span><span class="t nw">${esc(nm(x))} ${x.exit_reason ? `<span>${esc(x.exit_reason)}</span>` : ""}</span><span class="r num nw ${cls(x.pnl_yen)}">${sgn(x.pnl_yen)}円</span></div>`).join("") : `<div class="mini"><span class="t" style="color:var(--muted)">まだありません</span></div>`) + `<div style="border-top:1px solid var(--line)"></div>`;
   } else if (sub === "regime") {
     const r = D.regime || {}, u = D.us || {};
     h += `<div class="sub nw">売買ルールが見ている指標</div><h1 class="nw">相場の状態</h1></div>`;
     h += `<div class="sec">日本株（新規買いの条件）</div>`;
     h += `<div class="set" style="border-top:1px solid var(--line)"><div class="l"><span class="t nw">日経平均 ＞ 200日線</span><span class="s num nw">${r.n225 ? `${yen(r.n225)} / ${yen(r.sma200)}` : "-"}</span></div><span class="v nw ${r.bull ? "up" : "down"}" style="font-size:14px">${r.bull ? "OK" : "NG"}</span></div>`;
     h += `<div class="set"><div class="l"><span class="t nw">急落中でない（5日で−3%以内）</span><span class="s nw">急落中は新規買いを止める</span></div><span class="v nw ${r.calm ? "up" : "down"}" style="font-size:14px">${r.calm ? "OK" : "NG"}</span></div>`;
-    h += `<div class="sec">米国コア（SPMO）</div>`;
+    h += `<div class="sec">米国コア（NASDAQ-100投信・判定はQQQ）</div>`;
     h += `<div class="set" style="border-top:1px solid var(--line)"><div class="l"><span class="t nw">直近21日の値動きの大きさ</span><span class="s nw">年率換算。目標 20% → 荒い時は保有を減らす</span></div><span class="v num nw">${u.vol ? Math.round(u.vol * 100) + "%" : "-"}</span></div>`;
     h += `<div class="set" style="border-bottom:1px solid var(--line)"><div class="l"><span class="t nw">現在の露出</span><span class="s nw">前回から15pt超ずれた月曜だけ変更（${u.exposure_date ? md(u.exposure_date) + "〜" : "初期"}）</span></div><span class="v num nw">${Math.round((u.exposure ?? 1) * 100)}%</span></div>`;
   } else if (sub === "log") {
@@ -329,16 +340,22 @@ document.addEventListener("click", e => {
   const el = e.target.closest("[data-fill],[data-skip],[data-toggle],[data-sub],[data-back],[data-cash],[data-add],[data-alloc],[data-editpos],[data-delpos],[data-addpos],[data-nisa]");
   if (!el) return;
   const d = el.dataset;
-  if (d.fill) {
+  if (d.fill && D.todo.find(x => x.id === d.fill && isFund(x))) {
+    const o = D.todo.find(x => x.id === d.fill);
+    const amt = +document.getElementById("amt-" + d.fill).value.replace(/[^\d]/g, "");
+    const dt = document.getElementById("dt-" + d.fill).value.trim();
+    if (!(amt > 0)) return toast("金額を入れてください");
+    send(`記録: ${o.side === "buy" ? "買" : "売"} ${nm(o)} ${amt}円`, { action: "fill", order: o.id, shares: amt / o.ref_price, price: o.ref_price, date: dt });
+  } else if (d.fill) {
     const o = D.todo.find(x => x.id === d.fill); if (!o) return;
     const sh = +document.getElementById("sh-" + d.fill).value.replace(/[^\d]/g, "");
     const px = +document.getElementById("px-" + d.fill).value.replace(/[^\d.]/g, "");
     const dt = document.getElementById("dt-" + d.fill).value.trim();
     if (!(sh > 0) || !(px > 0)) return toast("株数と約定単価を入れてください");
-    send(`記録: ${o.side === "buy" ? "買" : "売"} ${isUS(o) ? o.ticker : o.name} ${sh}株 @${px}`, { action: "fill", order: o.id, shares: sh, price: px, date: dt });
+    send(`記録: ${o.side === "buy" ? "買" : "売"} ${nm(o)} ${sh}株 @${px}`, { action: "fill", order: o.id, shares: sh, price: px, date: dt });
   } else if (d.skip) {
     const o = D.todo.find(x => x.id === d.skip); if (!o) return;
-    send(`記録: 見送り ${isUS(o) ? o.ticker : o.name}`, { action: "skip", order: o.id });
+    send(`記録: 見送り ${nm(o)}`, { action: "skip", order: o.id });
   } else if (d.cash) {
     const v = +document.getElementById("cash-in").value.replace(/[^\d]/g, "");
     if (!(v >= 0)) return toast("金額を入れてください");
@@ -360,7 +377,7 @@ document.addEventListener("click", e => {
     if (!confirm(`${x.name} を保有から外しますか？（現金は変わりません）`)) return;
     send(`削除: ${x.name}`, { action: "position_remove", position: x.id });
   } else if (d.addpos) {
-    const tk = prompt("銘柄コード（例 7203 / SPMO）"); if (!tk) return;
+    const tk = prompt("銘柄コード（例 7203）"); if (!tk) return;
     const us = /^[A-Z]{2,5}$/.test(tk.trim().toUpperCase());
     const sh = prompt("株数"); if (!sh) return;
     const px = prompt(us ? "取得単価（$）" : "取得単価（円）"); if (!px) return;

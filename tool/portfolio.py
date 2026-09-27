@@ -9,7 +9,7 @@ tool/state/portfolio.json
   alloc_us          : 米国コアの目標配分（0.5 = 米50:日50）
   positions[]       : 保有（open）と決済済み（closed）
   orders[]          : 指示した注文。pending → done / skipped / auto
-  us                : SPMO の露出（exposure）と最終更新日
+  us                : 米国コア（NASDAQ-100投信）の露出（exposure）と最終更新日
 """
 import datetime as dt
 import json
@@ -29,7 +29,7 @@ DEFAULT = {
     "alloc_us": 0.5,
     "positions": [],
     "orders": [],
-    "us": {"ticker": "SPMO", "exposure": 1.0, "exposure_date": ""},
+    "us": {"ticker": "NDX100", "exposure": 1.0, "exposure_date": ""},
     "events": [],
 }
 
@@ -104,18 +104,23 @@ def find_position(p, pid):
 
 
 def add_order(p, side, market, ticker, name, shares, ref_price, reason, stop=None,
-              position_id=None, date=None, fx=None, note=""):
+              position_id=None, date=None, fx=None, note="", proxy=None):
     """新しい指示を pending で追加。同じ銘柄・同じ側の pending があれば置き換える"""
     for o in list(p["orders"]):
         if o["status"] == "pending" and o["ticker"] == ticker and o["side"] == side:
             p["orders"].remove(o)
     o = {"id": _id("o"), "date": date or dt.date.today().isoformat(), "side": side,
          "market": market, "ticker": ticker, "code": ticker.replace(".T", ""),
-         "name": name, "shares": int(shares), "ref_price": float(ref_price),
+         "name": name, "shares": _qty(market, shares), "ref_price": float(ref_price),
          "stop": (None if stop is None else float(stop)), "reason": reason,
-         "status": "pending", "position_id": position_id, "fx": fx, "note": note}
+         "status": "pending", "position_id": position_id, "fx": fx, "note": note, "proxy": proxy}
     p["orders"].append(o)
     return o
+
+
+def _qty(market, q):
+    """投信は口数（小数）、株は整数"""
+    return round(float(q), 6) if market == "fund" else int(q)
 
 
 def _yen(market, price, shares, fx):
@@ -128,7 +133,7 @@ def record_fill(p, oid, fill_price=None, fill_shares=None, fill_date=None, auto=
     if not o or o["status"] not in ("pending",):
         return None
     price = float(fill_price if fill_price is not None else o["ref_price"])
-    shares = int(fill_shares if fill_shares is not None else o["shares"])
+    shares = _qty(o["market"], fill_shares if fill_shares is not None else o["shares"])
     date = fill_date or dt.date.today().isoformat()
     fx = o.get("fx") or 150.0
     if shares <= 0:
@@ -140,21 +145,21 @@ def record_fill(p, oid, fill_price=None, fill_shares=None, fill_date=None, auto=
         pos = {"id": _id("p"), "market": o["market"], "ticker": o["ticker"], "code": o["code"],
                "name": o["name"], "shares": shares, "entry_price": price, "entry_date": date,
                "stop": stop, "status": "open", "fx_entry": fx if o["market"] == "us" else None,
-               "order_id": oid}
+               "order_id": oid, "proxy": o.get("proxy")}
         # 同一銘柄の保有があれば合算（米国コアの買い増し）
         same = [x for x in open_positions(p, o["market"]) if x["ticker"] == o["ticker"]]
         if same:
             x = same[0]
             tot = x["shares"] + shares
             x["entry_price"] = (x["entry_price"] * x["shares"] + price * shares) / tot
-            x["shares"] = tot
+            x["shares"] = _qty(o["market"], tot)
             pos = x
         else:
             p["positions"].append(pos)
         p["cash_yen"] = int(round(p["cash_yen"] - _yen(o["market"], price, shares, fx)))
         o.update({"status": "auto" if auto else "done", "fill_price": price, "fill_shares": shares,
                   "fill_date": date, "position_id": pos["id"]})
-        event(p, f"{'自動記録' if auto else '記録'}: 買 {o['name']} {shares}株 @{price:,.2f}", date)
+        event(p, f"{'自動記録' if auto else '記録'}: 買 {o['name']} " + (f"{shares * price:,.0f}円" if o["market"] == "fund" else f"{shares}株 @{price:,.2f}"), date)
     else:
         pos = find_position(p, o.get("position_id") or "")
         if pos is None:
@@ -162,16 +167,16 @@ def record_fill(p, oid, fill_price=None, fill_shares=None, fill_date=None, auto=
             pos = same[0] if same else None
         if pos is not None:
             sold = min(shares, pos["shares"])
-            pos["shares"] -= sold
+            pos["shares"] = _qty(o["market"], pos["shares"] - sold)
             pnl = (price - pos["entry_price"]) * sold * (fx if o["market"] == "us" else 1.0)
-            if pos["shares"] <= 0:
+            if pos["shares"] <= 1e-6:
                 pos.update({"status": "closed", "exit_price": price, "exit_date": date,
                             "pnl_yen": round(pnl), "exit_reason": o["reason"]})
             p["cash_yen"] = int(round(p["cash_yen"] + _yen(o["market"], price, sold, fx)))
             shares = sold
         o.update({"status": "auto" if auto else "done", "fill_price": price, "fill_shares": shares,
                   "fill_date": date})
-        event(p, f"{'自動記録' if auto else '記録'}: 売 {o['name']} {shares}株 @{price:,.2f}", date)
+        event(p, f"{'自動記録' if auto else '記録'}: 売 {o['name']} " + (f"{shares * price:,.0f}円" if o["market"] == "fund" else f"{shares}株 @{price:,.2f}"), date)
     return o
 
 
@@ -212,7 +217,7 @@ def edit_position(p, pid, shares=None, entry_price=None, stop=None):
     if not x:
         return None
     if shares is not None:
-        x["shares"] = int(shares)
+        x["shares"] = _qty(x["market"], shares)
     if entry_price is not None:
         x["entry_price"] = float(entry_price)
         if x["market"] == "jp":
@@ -227,7 +232,7 @@ def add_position(p, market, ticker, name, shares, entry_price, entry_date=None, 
     """手動で保有を追加（システム外で買ったものなど）"""
     stop = round(float(entry_price) * 0.90, 1) if market == "jp" else None
     x = {"id": _id("p"), "market": market, "ticker": ticker, "code": ticker.replace(".T", ""),
-         "name": name, "shares": int(shares), "entry_price": float(entry_price),
+         "name": name, "shares": _qty(market, shares), "entry_price": float(entry_price),
          "entry_date": entry_date or dt.date.today().isoformat(), "stop": stop, "status": "open",
          "fx_entry": fx, "order_id": None}
     p["positions"].append(x)

@@ -48,24 +48,21 @@ def _cash_for(port, fx):
     reserved = 0.0
     for o in pf.pending_orders(port):
         if o["side"] == "buy":
-            reserved += o["ref_price"] * o["shares"] * (fx if o["market"] == "us" else 1.0)
+            reserved += o.get("amount_yen") or o["ref_price"] * o["shares"] * (fx if o["market"] == "us" else 1.0)
     return float(port["cash_yen"]) - reserved
 
 
 def _handle_jp_exits(port, sig, today):
-    """損切り到達は逆指値で約定済みとみなして自動記録。それ以外は翌朝寄付の売り指示"""
+    """手仕舞い（損切り・25日線<75日線・期限）はすべて翌朝寄付の売り指示。
+    かぶミニは逆指値を置けないため、損切りも終値で判定して翌朝に売る"""
     sells = []
+    pend = {(o["ticker"], o["side"]) for o in pf.pending_orders(port)}
     for e in sig["exits"]:
-        if e["exit"] == "stop":
-            o = pf.add_order(port, "sell", "jp", e["ticker"], e["name"], e["shares"], e["stop"],
-                             "逆指値に到達（自動売却）", position_id=e["position_id"], date=today)
-            pf.record_fill(port, o["id"], fill_price=e["stop"], auto=True)
-            o["note"] = "逆指値が約定したものとして記録。違う場合は保有画面で直してください"
-            sells.append(o)
-        else:
-            o = pf.add_order(port, "sell", "jp", e["ticker"], e["name"], e["shares"], e["close"],
-                             e["reason"], position_id=e["position_id"], date=today)
-            sells.append(o)
+        if (e["ticker"], "sell") in pend:
+            continue  # 既に売り指示が出ていて未記録
+        o = pf.add_order(port, "sell", "jp", e["ticker"], e["name"], e["shares"], e["close"],
+                         e["reason"], position_id=e["position_id"], date=today)
+        sells.append(o)
     return sells
 
 
@@ -82,7 +79,7 @@ def monday(cfg, today=None, notify=True):
     pf.apply_monthly_add(port, today)
     n_auto = pf.auto_fill_stale(port, days=int(cfg.get("auto_fill_days", 7)), today=today)
     fx = sl.usdjpy()
-    prices = st.latest_prices(port)
+    prices = st.latest_prices(port, fx)
     val = st.valuation(port, prices, fx)
     total = val["total_yen"]
     sig = st.jp_signals(cfg, port)
@@ -92,35 +89,38 @@ def monday(cfg, today=None, notify=True):
     # 1) 日本株の手仕舞い
     orders += _handle_jp_exits(port, sig, ts)
 
-    # 2) 米国コア（SPMO）
+    # 2) 米国コア（NASDAQ-100 投資信託。金額で指示、100円単位）
     us = st.us_core(cfg, port, fx)
-    us_pos = [x for x in pf.open_positions(port, "us") if x["ticker"] == us["ticker"]]
-    cur_sh = sum(x["shares"] for x in us_pos)
+    us_pos = [x for x in pf.open_positions(port, "fund") if x["ticker"] == us["ticker"]]
+    cur_yen = sum(x["shares"] for x in us_pos) * us["unit_yen"]
     sleeve = float(port["alloc_us"]) * total
-    target_sh = int(math.floor(sleeve * us["exposure"] / (us["price"] * fx)))
-    diff = target_sh - cur_sh
+    target_yen = sleeve * us["exposure"]
+    diff_yen = int(round((target_yen - cur_yen) / 100.0)) * 100
+    min_trade = int(cfg.get("us_core", {}).get("min_trade_yen", 3000))
     cash = _cash_for(port, fx)
     us_note = ""
-    if diff > 0 and cash >= us["price"] * fx * diff:
-        # 買い増しは「露出が変わった」「四半期の入替」「初回」「積み増しで1株分たまった」時
-        o = pf.add_order(port, "buy", "us", us["ticker"], "S&P500モメンタムETF", diff, us["price"],
-                         ("露出↑" if us["changed"] else "配分に合わせて買い増し") + f"（露出{us['exposure']*100:.0f}%）",
-                         date=ts, fx=fx)
+    fund_kw = dict(date=ts, fx=fx, proxy=us["proxy"])
+    if diff_yen >= min_trade:
+        amt = min(diff_yen, int(cash // 100) * 100)
+        if amt >= min_trade:
+            o = pf.add_order(port, "buy", "fund", us["ticker"], us["name"], amt / us["unit_yen"], us["unit_yen"],
+                             ("露出を上げる" if us["changed"] else "配分に合わせて買い増し") + f"（露出{us['exposure']*100:.0f}%）", **fund_kw)
+            o["amount_yen"] = amt
+            orders.append(o)
+        else:
+            us_note = f"現金不足で米国コアの買い増しを見送り（あと{diff_yen:,}円）"
+    elif diff_yen <= -min_trade and (us["changed"] or _quarter_start(today)):
+        amt = min(-diff_yen, int(cur_yen // 100) * 100)
+        o = pf.add_order(port, "sell", "fund", us["ticker"], us["name"], amt / us["unit_yen"], us["unit_yen"],
+                         ("露出を下げる（値動きが荒い）" if us["changed"] else "四半期の配分調整") + f"（露出{us['exposure']*100:.0f}%）",
+                         position_id=us_pos[0]["id"] if us_pos else None, **fund_kw)
+        o["amount_yen"] = amt
         orders.append(o)
-    elif diff < 0 and (us["changed"] or _quarter_start(today)):
-        o = pf.add_order(port, "sell", "us", us["ticker"], "S&P500モメンタムETF", -diff, us["price"],
-                         ("露出↓（値動きが荒い）" if us["changed"] else "四半期の配分調整") + f"（露出{us['exposure']*100:.0f}%）",
-                         date=ts, fx=fx, position_id=us_pos[0]["id"] if us_pos else None)
-        orders.append(o)
-    elif diff > 0:
-        us_note = f"現金不足で買い増し見送り（あと{diff}株）"
     if us["changed"]:
         port["us"]["exposure"] = us["exposure"]
         port["us"]["exposure_date"] = ts
-    port["us"]["ticker"] = us["ticker"]
-    port["us"]["target_shares"] = target_sh
-    port["us"]["price"] = us["price"]
-    port["us"]["vol"] = us["vol"]
+    port["us"].update({"ticker": us["ticker"], "name": us["name"], "proxy": us["proxy"],
+                       "target_yen": round(target_yen), "unit_yen": us["unit_yen"], "vol": us["vol"]})
 
     # 3) 日本株の新規
     cj = cfg.get("jp", {})
@@ -156,15 +156,14 @@ def monday(cfg, today=None, notify=True):
     # 4) LINE
     lines = [f"{today.month}/{today.day}（{_wd(today)}）今日やること {len(orders)}件"]
     for o in orders:
-        if o["status"] == "auto":
-            lines.append(f"済 {o['name']} {o['shares']}株 逆指値で売却済のはず（{o['ref_price']:,.0f}円）")
-            continue
         side = "買" if o["side"] == "buy" else "売"
-        if o["market"] == "us":
+        if o["market"] == "fund":
+            lines.append(f"{side} {o['name']} {o['amount_yen']:,}円（金額指定）{o['reason']}")
+        elif o["market"] == "us":
             lines.append(f"{side} {o['ticker']} {o['shares']}株（約${o['ref_price']:,.0f}）{o['reason']}")
         else:
             amt = o["ref_price"] * o["shares"]
-            extra = f" 逆指値{o['stop']:,.0f}" if o["side"] == "buy" else f" {o['reason']}"
+            extra = f" 損切り{o['stop']:,.0f}円" if o["side"] == "buy" else f" {o['reason']}"
             lines.append(f"{side} {o['code']} {o['name']} {o['shares']}株（約{amt/10000:.1f}万円）{extra}")
     if not orders:
         lines.append("今日は何もしません。保有はそのまま")
@@ -172,8 +171,12 @@ def monday(cfg, today=None, notify=True):
         lines.append("地合い悪化中のため日本株の新規買いは停止")
     if us_note:
         lines.append(us_note)
-    if orders and any(o["status"] == "pending" for o in orders):
-        lines.append("いずれも寄付成行。記録はアプリで")
+    if any(o["market"] == "jp" for o in orders):
+        lines.append("日本株はかぶミニの寄付取引（成行）。損切りは終値で判定して知らせます")
+    if any(o["market"] == "fund" for o in orders):
+        lines.append("投資信託は15:30までに金額指定で注文")
+    if orders:
+        lines.append("記録はアプリで")
     if n_auto:
         lines.append(f"先週の未記録{n_auto}件は指示どおり約定として自動記録しました")
     if not port.get("cash_confirmed"):
@@ -214,11 +217,8 @@ def evening(cfg, today=None, notify=True):
         return ""
     lines = [f"{today.month}/{today.day}（{_wd(today)}）売り {len(sells)}件（明日の寄付）"]
     for o in sells:
-        if o["status"] == "auto":
-            lines.append(f"済 {o['code']} {o['name']} 逆指値で売却済のはず（{o['ref_price']:,.0f}円）")
-        else:
-            lines.append(f"売 {o['code']} {o['name']} {o['shares']}株 {o['reason']}")
-    lines.append("逆指値の注文は取り消してください。記録はアプリで")
+        lines.append(f"売 {o['code']} {o['name']} {o['shares']}株 {o['reason']}")
+    lines.append("かぶミニの寄付取引（成行）で売り。記録はアプリで")
     url = sl.dashboard_url(cfg)
     if url:
         lines.append(url)
@@ -236,7 +236,7 @@ def saturday(cfg, today=None, notify=True):
     port = pf.load()
     pf.apply_monthly_add(port, today)
     fx = sl.usdjpy()
-    prices = st.latest_prices(port)
+    prices = st.latest_prices(port, fx)
     val = st.valuation(port, prices, fx)
     prev = sl.load_state(SIGNALS, {})
     last_total = prev.get("week_total_yen")
@@ -280,7 +280,12 @@ def record(cfg, body=None):
     msg = ""
     if a == "fill":
         o = pf.record_fill(port, data.get("order"), data.get("price"), data.get("shares"), data.get("date"))
-        msg = f"記録しました: {'買' if o['side']=='buy' else '売'} {o['name']} {o['fill_shares']}株 @{o['fill_price']:,.2f}" if o else "対象の指示が見つかりません（記録済みか期限切れ）"
+        if not o:
+            msg = "対象の指示が見つかりません（記録済みか期限切れ）"
+        elif o["market"] == "fund":
+            msg = f"記録しました: {'買' if o['side']=='buy' else '売'} {o['name']} {o['fill_shares'] * o['fill_price']:,.0f}円"
+        else:
+            msg = f"記録しました: {'買' if o['side']=='buy' else '売'} {o['name']} {o['fill_shares']}株 @{o['fill_price']:,.2f}"
     elif a == "skip":
         o = pf.record_skip(port, data.get("order"))
         msg = f"見送りとして記録しました: {o['name']}" if o else "対象の指示が見つかりません"

@@ -12,10 +12,13 @@
   },
   "github_pages_url": "https://luu-san0711.github.io/kabu-signal/",
   "us_core": {
-    "ticker": "SPMO",
+    "fund_id": "NDX100",
+    "fund_name": "楽天・プラス・NASDAQ-100",
+    "proxy": "QQQ",
     "vol_target": 0.2,
     "vol_lookback": 21,
-    "change_band": 0.15
+    "change_band": 0.15,
+    "min_trade_yen": 3000
   },
   "auto_fill_days": 7,
   "github_repo": "Luu-San0711/kabu-signal"

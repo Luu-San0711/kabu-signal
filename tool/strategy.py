@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """売買ルール（検証済み・2019〜2026）
 
-米国コア: SPMO（S&P500モメンタムETF）を保有。21日実現ボラで露出を調整（目標20%）
-          露出は月曜のみ更新、前回から15pt超ずれた時だけ変更。変更なしなら何もしない。
+米国コア: 楽天・プラス・NASDAQ-100インデックス・ファンド（投資信託、円で1円単位）を保有。
+          値動きの判定と評価は同じ指数のETF「QQQ」×ドル円で代用する。
+          21日実現ボラで露出を調整（目標20%）。露出は月曜のみ更新、前回から15pt超ずれた時だけ変更。
 日本株  : 55日高値ブレイクアウト（週内に更新・金曜引けも条件維持）。最大5銘柄。
-          損切り −10%（逆指値）、25日線<75日線で手仕舞い、最長60営業日。
+          損切り −10%（かぶミニは逆指値不可のため、終値で判定して翌朝寄付で売る）、
+          25日線<75日線で手仕舞い、最長60営業日。
           日経平均が200日線より上 かつ 5日で−3%超の急落中でない時だけ新規買い。
 """
 import glob
@@ -19,17 +21,15 @@ ETF_FILE = os.path.join(sl.DATA, "etf.parquet")
 
 
 # ---------------------------------------------------------------- ETF価格
-def update_etf(tickers=("SPMO", "MTUM"), period="1mo"):
-    """SPMO/MTUM の日足を data/etf.parquet に増分保存（無ければ3年分取得）"""
+def _download(tickers, period):
     import yfinance as yf
-    if os.environ.get("KABU_SKIP_UPDATE") and os.path.exists(ETF_FILE):
-        return
-    old = pd.read_parquet(ETF_FILE) if os.path.exists(ETF_FILE) else pd.DataFrame()
-    if len(old) == 0:
-        period = "3y"
     df = yf.download(tickers=list(tickers), period=period, interval="1d",
                      group_by="ticker", auto_adjust=True, threads=2, progress=False)
     frames = []
+    if df is None or len(df) == 0:
+        return frames
+    if not isinstance(df.columns, pd.MultiIndex):
+        df = pd.concat({list(tickers)[0]: df}, axis=1)
     for t in tickers:
         if t not in df.columns.get_level_values(0):
             continue
@@ -41,6 +41,22 @@ def update_etf(tickers=("SPMO", "MTUM"), period="1mo"):
         sub = sub[need].copy()
         sub["ticker"] = t
         frames.append(sub)
+    return frames
+
+
+def update_etf(tickers=("QQQ",), period="1mo"):
+    """米国コア判定用ETFの日足を data/etf.parquet に増分保存（初めての銘柄は3年分取得）"""
+    if os.environ.get("KABU_SKIP_UPDATE") and os.path.exists(ETF_FILE):
+        return
+    old = pd.read_parquet(ETF_FILE) if os.path.exists(ETF_FILE) else pd.DataFrame()
+    have = set(old["ticker"].unique()) if len(old) else set()
+    new_t = [t for t in tickers if t not in have]
+    known = [t for t in tickers if t in have]
+    frames = []
+    if new_t:
+        frames += _download(new_t, "3y")
+    if known:
+        frames += _download(known, period)
     if not frames:
         sl.log("ETF価格の取得に失敗（既存データで続行）")
         return
@@ -65,9 +81,9 @@ def etf_close(ticker):
 
 # ---------------------------------------------------------------- 米国コア
 def us_core(cfg, port, fx):
-    """SPMO の目標露出・目標株数を返す"""
+    """米国コア（NASDAQ-100投信）の目標露出を返す。判定は代用ETF（QQQ）の値動き"""
     cu = cfg.get("us_core", {})
-    ticker = cu.get("ticker", "SPMO")
+    ticker = cu.get("proxy", "QQQ")
     vt = float(cu.get("vol_target", 0.20))
     lb = int(cu.get("vol_lookback", 21))
     band = float(cu.get("change_band", 0.15))
@@ -77,7 +93,9 @@ def us_core(cfg, port, fx):
     raw = 1.0 if not np.isfinite(rv) or rv <= 0 else float(min(1.0, vt / rv))
     cur = float(port["us"].get("exposure", 1.0))
     new = raw if abs(raw - cur) > band else cur
-    return {"ticker": ticker, "price": float(s.iloc[-1]), "date": str(s.index[-1].date()),
+    return {"ticker": cu.get("fund_id", "NDX100"), "name": cu.get("fund_name", "楽天・プラス・NASDAQ-100"),
+            "proxy": ticker, "price_usd": float(s.iloc[-1]), "unit_yen": float(s.iloc[-1]) * fx,
+            "price": float(s.iloc[-1]) * fx, "date": str(s.index[-1].date()),
             "vol": rv, "exposure_raw": raw, "exposure": new, "changed": new != cur,
             "sma200_ok": bool(s.iloc[-1] > s.rolling(200).mean().iloc[-1]) if len(s) >= 200 else True}
 
@@ -132,14 +150,13 @@ def jp_signals(cfg, port):
         px = float(c[tk].iloc[last])
         stop = float(x.get("stop") or 0)
         held_days = int((c.index > pd.Timestamp(x["entry_date"])).sum())
-        lo = float(low[tk].iloc[last]) if np.isfinite(low[tk].iloc[last]) else px
         below = bool(sma25[tk].iloc[last] < sma75[tk].iloc[last])
         item = {"position_id": x["id"], "ticker": tk, "code": x["code"], "name": x["name"],
                 "close": px, "stop": stop, "held": held_days, "sma25": float(sma25[tk].iloc[last]),
                 "chg": px / float(x["entry_price"]) - 1, "shares": x["shares"]}
-        if stop and (lo <= stop or px <= stop):
+        if stop and px <= stop:
             item["exit"] = "stop"
-            item["reason"] = "逆指値に到達"
+            item["reason"] = f"終値が損切りライン{stop:,.0f}円を割った"
         elif below:
             item["exit"] = "dc"
             item["reason"] = "25日線が75日線を下回った"
@@ -158,8 +175,8 @@ def port_open(port, market=None):
 
 
 # ---------------------------------------------------------------- 評価
-def latest_prices(port):
-    """保有銘柄の最新終値（円換算はしない）"""
+def latest_prices(port, fx=None):
+    """保有銘柄の最新終値（日本株は円、米国株はドル、投信は代用ETF×ドル円の円建て）"""
     out = {}
     jp = [x["ticker"] for x in port_open(port, "jp")]
     if jp:
@@ -177,6 +194,15 @@ def latest_prices(port):
                 s = etf_close(tk)
                 out[tk] = (float(s.iloc[-1]), str(s.index[-1].date()),
                            float(s.iloc[-2]) if len(s) > 1 else float(s.iloc[-1]))
+            except Exception:
+                pass
+    funds = port_open(port, "fund")
+    if funds and os.path.exists(ETF_FILE):
+        fx = fx or sl.usdjpy()
+        for x in funds:
+            try:
+                s = etf_close(x.get("proxy") or "QQQ")
+                out[x["ticker"]] = (float(s.iloc[-1]) * fx, str(s.index[-1].date()), float(s.iloc[-2]) * fx)
             except Exception:
                 pass
     return out
