@@ -53,12 +53,16 @@ def fetch_jp_universe():
         df = pd.read_csv(out, dtype={"code": str})
         log(f"日本株リスト: 既存ファイル使用 ({len(df)}銘柄)")
         return df
-    url = "https://www.jpx.co.jp/markets/statistics-equities/misc/tvdivq0000001vg2-att/data_j.xls"
     log("JPXから東証上場銘柄一覧を取得中...")
-    r = requests.get(url, headers=UA, timeout=60)
+    r = None
+    for url in ("https://www.jpx.co.jp/markets/statistics-equities/misc/tvdivq0000001vg2-att/data_j.xlsx",
+                "https://www.jpx.co.jp/markets/statistics-equities/misc/tvdivq0000001vg2-att/data_j.xls"):
+        r = requests.get(url, headers=UA, timeout=60)
+        if r.status_code == 200:
+            break
     r.raise_for_status()
     df = None
-    for engine in ("xlrd", "openpyxl"):
+    for engine in ("openpyxl", "xlrd"):
         try:
             df = pd.read_excel(io.BytesIO(r.content), dtype=str, engine=engine)
             break
