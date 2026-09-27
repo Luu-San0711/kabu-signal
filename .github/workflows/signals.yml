@@ -1,21 +1,25 @@
 # 株シグナル クラウド自動実行（GitHub Actions・外部サービス不要）
-# 平日19:35 JST: 日本株スキャン / 毎日09:05 JST: 米国株（月初=リバランス, 土曜=週次チェック）
+# 月曜 9:05 JST: 今週の指示 / 平日 19:35 JST: 手仕舞い判定 / 土曜 9:05 JST: まとめ
+# Issue が作られた時: アプリからの記録（発注した・見送った・現金の設定）を反映
 name: kabu-signal
 
 on:
   schedule:
     - cron: '35 10 * * 1-5'   # 平日 19:35 JST（UTC 10:35）
-    - cron: '5 0 * * *'       # 毎日 09:05 JST（UTC 00:05）
+    - cron: '5 0 * * *'       # 毎日 09:05 JST（UTC 00:05）月曜=指示 / 土曜=まとめ / 他=価格更新のみ
+  issues:
+    types: [opened]
   workflow_dispatch:
     inputs:
       job:
         description: '手動実行する処理'
         type: choice
-        default: jp
-        options: [jp, us-rebalance, us-health, dashboard]
+        default: dashboard
+        options: [monday, evening, saturday, dashboard]
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: kabu-signal
@@ -29,6 +33,8 @@ env:
 
 jobs:
   run:
+    # Issue 起動は「リポジトリの持ち主が作った Issue」だけ処理する
+    if: github.event_name != 'issues' || github.event.issue.user.login == github.repository_owner
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
@@ -55,19 +61,24 @@ jobs:
 
       - name: ジョブ実行
         id: job
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           JOB="${{ github.event.inputs.job }}"
-          if [ -z "$JOB" ]; then
-            if [ "${{ github.event.schedule }}" = "35 10 * * 1-5" ]; then JOB=jp; else JOB=us-auto; fi
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            JOB=record
+          elif [ -z "$JOB" ]; then
+            if [ "${{ github.event.schedule }}" = "35 10 * * 1-5" ]; then JOB=evening; else JOB=auto; fi
           fi
           echo "JOB=$JOB"
-          case "$JOB" in
-            jp)           python tool/daily_jp.py ;;
-            us-auto)      python tool/us_jobs.py ;;
-            us-rebalance) python tool/us_jobs.py rebalance ;;
-            us-health)    python tool/us_jobs.py health ;;
-            dashboard)    (cd tool && python dashboard.py) ;;
-          esac
+          python tool/jobs.py "$JOB"
+
+      - name: 記録の結果を Issue に返して閉じる
+        if: github.event_name == 'issues'
+        run: |
+          MSG="$(cat tool/state/record_result.txt 2>/dev/null || echo '処理しました')"
+          gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "$MSG" || true
+          gh issue close ${{ github.event.issue.number }} --repo ${{ github.repository }} || true
 
       - name: 実行ログを保存（失敗時の原因確認用）
         if: always()
@@ -81,20 +92,20 @@ jobs:
           if [ -z "$LINE_CHANNEL_ACCESS_TOKEN" ]; then exit 0; fi
           curl -s -X POST https://api.line.me/v2/bot/message/broadcast \
             -H "Authorization: Bearer $LINE_CHANNEL_ACCESS_TOKEN" -H "Content-Type: application/json" \
-            -d "{\"messages\":[{\"type\":\"text\",\"text\":\"⚠️ 株シグナル: クラウド実行が失敗しました。\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}]}" || true
+            -d "{\"messages\":[{\"type\":\"text\",\"text\":\"株シグナル: クラウド実行が失敗しました。\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}]}" || true
 
       - name: 価格データのキャッシュ保存
-        if: always() && hashFiles('data/*.parquet') != ''
+        if: always() && hashFiles('data/*.parquet') != '' && github.event_name != 'issues'
         uses: actions/cache/save@v4
         with:
           path: data
           key: kabu-data-${{ github.run_id }}
 
       - name: 価格データのバックアップ（GitHub Release）
-        if: always()
+        if: always() && github.event_name != 'issues'
         run: python tool/cloud_sync.py backup
 
-      - name: 監視状態とダッシュボードを保存（git commit）
+      - name: 状態とダッシュボードを保存（git commit）
         if: always()
         run: |
           git config user.name "kabu-signal-bot"
