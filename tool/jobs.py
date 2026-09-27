@@ -292,6 +292,8 @@ def record(cfg, body=None):
             port["monthly_add_yen"] = int(data["monthly_add_yen"])
         if "alloc_us" in data:
             port["alloc_us"] = float(data["alloc_us"])
+        if "nisa" in data:
+            port["nisa"] = bool(data["nisa"])
         pf.event(port, f"設定変更: 積み増し {port['monthly_add_yen']:,}円 / 米国配分 {port['alloc_us']*100:.0f}%")
         msg = "設定を更新しました"
     elif a == "position_edit":

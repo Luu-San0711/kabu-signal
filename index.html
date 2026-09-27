@@ -42,6 +42,7 @@ body{font-family:"Noto Sans JP","Hiragino Sans",sans-serif;-webkit-font-smoothin
 .form input:disabled{color:var(--faint)}
 .btns{display:flex;gap:10px;margin-top:16px}
 .btn{flex:1;height:46px;border:0;border-radius:12px;background:var(--ink);color:#fff;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.btn[hidden]{display:none}
 .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line2)}
 .btn.sm{height:38px;font-size:13px;flex:none;padding:0 16px}
 .asset{padding:26px 0 0}
@@ -83,7 +84,12 @@ body{font-family:"Noto Sans JP","Hiragino Sans",sans-serif;-webkit-font-smoothin
 .set .t{font-size:14px;font-weight:600}.set .s{font-size:11px;color:var(--muted)}
 .set .v{flex:none;font-size:18px;font-weight:800}
 .set .v small{font-size:12px;color:var(--muted);margin-left:2px}
-.set input{font-family:"Inter",sans-serif;font-size:18px;font-weight:800;text-align:right;width:120px;border:0;border-bottom:2px solid var(--ink);background:transparent;outline:none;padding:2px 0;border-radius:0;color:var(--ink)}
+.set .val{flex:none;display:flex;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:2px}
+.set .val input{font-family:"Inter",sans-serif;font-size:18px;font-weight:800;text-align:right;width:96px;border:0;background:transparent;outline:none;padding:0;border-radius:0;color:var(--ink)}
+.set .val small{font-size:12px;color:var(--muted);margin-left:2px}
+.tog{flex:none;width:46px;height:28px;border-radius:14px;background:var(--line2);position:relative;cursor:pointer;display:block}
+.tog i{position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:11px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:left .15s}
+.tog.on{background:var(--ink)}.tog.on i{left:21px}
 .seg{flex:none;display:flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
 .seg span{padding:7px 12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer}
 .seg span.on{background:var(--ink);color:#fff}
@@ -149,7 +155,7 @@ function viewToday() {
   if (rec.length) {
     h += `<div class="sec">最近の記録</div>` + rec.map(o => `<div class="mini"><span class="d num nw">${md(o.fill_date || o.date)}</span><span class="t nw">${o.side === "buy" ? "買" : "売"} ${esc(o.market === "us" ? o.ticker : o.name)} ${o.fill_shares ?? o.shares}株 ${o.fill_price ? `<span class="num">@${fmtPx(o, o.fill_price)}</span>` : ""}</span><span class="r nw ${o.status === "skipped" ? "" : "up"}" style="${o.status === "skipped" ? "color:var(--faint)" : ""}">${o.status === "skipped" ? "見送り" : o.status === "auto" ? "自動記録" : o.status === "expired" ? "期限切れ" : "記録済"}</span></div>`).join("") + `<div style="border-top:1px solid var(--line)"></div>`;
   }
-  if (!D.cash_confirmed) h += `<div class="note nw">現金は推定値です。「その他 → 設定」で実際の購入可能金額に直してください</div>`;
+  if (!D.cash_confirmed) h += `<div class="note">現金は推定値です。「その他 → 設定」で実際の購入可能金額に直してください</div>`;
   return h;
 }
 
@@ -250,10 +256,11 @@ function viewMore() {
   h += `<div class="menu" data-sub="regime"><span class="t nw">相場の状態</span><span class="r nw">${reg.ok ? "日本株 買いOK" : reg.bull === false ? "日経が200日線割れ" : reg.calm === false ? "急落中" : "-"} · SPMO露出${Math.round((u.exposure ?? 1) * 100)}% ›</span></div>`;
   h += `<div class="menu" data-sub="log"><span class="t nw">記録の履歴</span><span class="r nw">${(D.events || []).length}件 ›</span></div></div>`;
   h += `<div class="sec">設定</div>`;
-  h += `<div class="set" style="border-top:1px solid var(--line)"><div class="l"><span class="t nw">購入可能金額</span><span class="s nw">${esc(D.cash_note || "記録すると自動で増減。ズレたらここで直す")}</span></div><input inputmode="numeric" id="cash-in" value="${D.cash_yen}"><button class="btn sm" data-cash="1">保存</button></div>`;
-  h += `<div class="set"><div class="l"><span class="t nw">毎月の積み増し</span><span class="s nw">毎月1日に自動で加算</span></div><input inputmode="numeric" id="add-in" value="${D.monthly_add_yen}"><button class="btn sm" data-add="1">保存</button></div>`;
-  h += `<div class="set"><div class="l"><span class="t nw">配分（米国：日本）</span><span class="s nw">週次の判断で自動的に近づけます</span></div><div class="seg"><span class="${D.alloc_us == 0.5 ? "on" : ""}" data-alloc="0.5">50 : 50</span><span class="${D.alloc_us == 0.67 ? "on" : ""}" data-alloc="0.67">67 : 33</span></div></div>`;
-  h += `<div class="set" style="border-bottom:1px solid var(--line)"><div class="l"><span class="t nw">LINE通知</span><span class="s nw">月曜 9:05 · 売りが出た平日 19:35 · 土曜まとめ</span></div><span class="v nw" style="font-size:13px">ON</span></div>`;
+  h += `<div class="set" style="border-top:1px solid var(--line)"><div class="l"><span class="t nw">購入可能金額</span><span class="s nw">${D.cash_confirmed ? "記録すると自動で増減。ズレたらここで直す" : "推定値です。実際の金額に直してください"}</span></div><span class="val"><input inputmode="numeric" id="cash-in" value="${yen(D.cash_yen)}" data-orig="${D.cash_yen}"><small>円</small></span><button class="btn sm save" data-cash="1" hidden>保存</button></div>`;
+  h += `<div class="set"><div class="l"><span class="t nw">毎月の積み増し</span><span class="s nw">毎月1日に自動で加算</span></div><span class="val"><input inputmode="numeric" id="add-in" value="${yen(D.monthly_add_yen)}" data-orig="${D.monthly_add_yen}"><small>円</small></span><button class="btn sm save" data-add="1" hidden>保存</button></div>`;
+  h += `<div class="set"><div class="l"><span class="t nw">配分（米国：日本）</span><span class="s nw">四半期ごとに戻す</span></div><div class="seg"><span class="${D.alloc_us == 0.5 ? "on" : ""}" data-alloc="0.5">50 : 50</span><span class="${D.alloc_us == 0.67 ? "on" : ""}" data-alloc="0.67">67 : 33</span></div></div>`;
+  h += `<div class="set"><div class="l"><span class="t nw">NISA口座</span><span class="s nw">使う場合は米国ETFをNISA成長枠で</span></div><span class="tog ${D.nisa ? "on" : ""}" data-nisa="${D.nisa ? 0 : 1}"><i></i></span></div>`;
+  h += `<div class="set" style="border-bottom:1px solid var(--line)"><div class="l"><span class="t nw">LINE通知</span><span class="s nw">月曜 9:05 · 売りが出た平日 19:35 · 土曜まとめ</span></div><span class="tog on"><i></i></span></div>`;
   h += `<div class="foot nw">投資助言ではありません。最終判断はご自身で。</div>`;
   return h;
 }
@@ -298,10 +305,28 @@ function render() {
   const t = tab();
   document.getElementById("app").innerHTML = t === "today" ? viewToday() : t === "hold" ? viewHold() : viewMore();
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.dataset.tab === t));
+  fitText();
   window.scrollTo(0, 0);
 }
+function fitText() {
+  document.querySelectorAll(".nw").forEach(el => {
+    el.style.fontSize = "";
+    if (el.scrollWidth <= el.clientWidth + 1) return;
+    const base = parseFloat(getComputedStyle(el).fontSize);
+    for (let k = 0.95; k >= 0.7; k -= 0.05) {
+      el.style.fontSize = (base * k).toFixed(1) + "px";
+      if (el.scrollWidth <= el.clientWidth + 1) break;
+    }
+  });
+}
+window.addEventListener("resize", fitText);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitText);
+document.addEventListener("input", e => {
+  const inp = e.target; if (!inp.dataset || inp.dataset.orig == null) return;
+  const btn = inp.closest(".set")?.querySelector(".save"); if (btn) btn.hidden = inp.value.replace(/[^\d]/g, "") === String(inp.dataset.orig);
+});
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-fill],[data-skip],[data-toggle],[data-sub],[data-back],[data-cash],[data-add],[data-alloc],[data-editpos],[data-delpos],[data-addpos]");
+  const el = e.target.closest("[data-fill],[data-skip],[data-toggle],[data-sub],[data-back],[data-cash],[data-add],[data-alloc],[data-editpos],[data-delpos],[data-addpos],[data-nisa]");
   if (!el) return;
   const d = el.dataset;
   if (d.fill) {
@@ -321,6 +346,8 @@ document.addEventListener("click", e => {
   } else if (d.add) {
     const v = +document.getElementById("add-in").value.replace(/[^\d]/g, "");
     send(`設定: 毎月の積み増し ${v}円`, { action: "setting", monthly_add_yen: v });
+  } else if (d.nisa != null) {
+    send(`設定: NISA口座 ${d.nisa == 1 ? "使う" : "使わない"}`, { action: "setting", nisa: d.nisa == 1 });
   } else if (d.alloc) {
     send(`設定: 米国配分 ${Math.round(d.alloc * 100)}%`, { action: "setting", alloc_us: +d.alloc });
   } else if (d.editpos) {

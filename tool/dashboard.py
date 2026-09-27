@@ -66,7 +66,7 @@ def build_data(cfg):
     d = dt.date.today()
     nxt_mon = d + dt.timedelta(days=(7 - d.weekday()) % 7 or 7)
     first = (d.replace(day=1) + dt.timedelta(days=32)).replace(day=1)
-    nxt = [{"date": nxt_mon.isoformat(), "label": "週次の判断"}, {"date": first.isoformat(), "label": f"+{port['monthly_add_yen']:,}円"}]
+    nxt = [{"date": nxt_mon.isoformat(), "label": "週次判断"}, {"date": first.isoformat(), "label": f"+{port['monthly_add_yen']:,}円"}]
     nxt.sort(key=lambda x: x["date"])
 
     return {
@@ -78,6 +78,7 @@ def build_data(cfg):
         "cash_confirmed": port.get("cash_confirmed", False),
         "monthly_add_yen": port["monthly_add_yen"],
         "alloc_us": port["alloc_us"],
+        "nisa": port.get("nisa", False),
         "total_yen": val["total_yen"],
         "prev_total_yen": val["prev_total_yen"],
         "ytd_yen": ytd,
