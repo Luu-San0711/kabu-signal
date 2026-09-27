@@ -85,6 +85,7 @@ jobs:
         run: |
           mkdir -p tool/state
           { echo "=== run $(date '+%Y-%m-%d %H:%M') ==="; cat data/fetch.log 2>/dev/null | tail -n 200; cat tool/state/tool.log 2>/dev/null | tail -n 200; } > tool/state/last_run.log || true
+          : > data/fetch.log 2>/dev/null || true   # 前回までの取得ログを持ち越さない
 
       - name: 失敗をLINEで知らせる
         if: failure()

@@ -48,9 +48,7 @@ def load_config():
     with open(p) as f:
         cfg = json.load(f)
     # クラウド実行(GitHub Actions)では秘密情報を環境変数(Secrets)から受け取る
-    for env, key in [("LINE_CHANNEL_ACCESS_TOKEN", "line_channel_access_token"),
-                     ("SUPABASE_SERVICE_KEY", "supabase_service_key"),
-                     ("SUPABASE_URL", "supabase_url")]:
+    for env, key in [("LINE_CHANNEL_ACCESS_TOKEN", "line_channel_access_token")]:
         if os.environ.get(env):
             cfg[key] = os.environ[env].strip()
     return cfg
@@ -229,7 +227,7 @@ def load_index_close(ticker):
     return d.set_index("date")["close"].sort_index()
 
 
-# ---------------------------------------------------------------- 日本株スキャン
+# ---------------------------------------------------------------- 日本株の地合い
 def jp_regime():
     n225 = load_index_close("^N225")
     sma200 = n225.rolling(200, min_periods=200).mean()
@@ -238,94 +236,6 @@ def jp_regime():
     return {"bull": bull, "calm": calm, "ok": bull and calm,
             "n225": float(n225.iloc[-1]), "sma200": float(sma200.iloc[-1]),
             "date": str(n225.index[-1].date())}
-
-
-def jp_daily(cfg, watch):
-    """日次スキャン一式:
-    - 地合い良好時のGC候補（実証済みスコア★2/★3のみ、株数・損切り価格つき）
-    - 監視中銘柄の手仕舞い判定（損切り接近/デッドクロス/期限）
-    """
-    cfgjp = cfg.get("jp", {})
-    budget = float(cfgjp.get("budget_per_trade_yen", 50000))
-    stop_pct = float(cfgjp.get("stop_pct", 0.10))
-    max_hold = int(cfgjp.get("max_hold_days", 60))
-
-    wide = load_wide("jp")
-    c, v = wide["close"], wide["volume"]
-    low = wide["low"]
-    sma25 = c.rolling(25, min_periods=25).mean()
-    sma75 = c.rolling(75, min_periods=75).mean()
-    sma200 = c.rolling(200, min_periods=200).mean()
-    to20 = (c * v).rolling(20, min_periods=20).mean()
-    vavg20 = v.rolling(20, min_periods=20).mean()
-    last, prev = -1, -2
-    data_date = c.index[-1]
-
-    uni = pd.read_csv(os.path.join(DATA, "jp_universe.csv"), dtype={"code": str})
-    names = dict(zip(uni["ticker"], uni["name"]))
-
-    # --- 新規候補 ---
-    gc_today = (sma25.iloc[last] > sma75.iloc[last]) & (sma25.iloc[prev] <= sma75.iloc[prev])
-    ok = (
-        gc_today
-        & (c.iloc[last] > sma200.iloc[last])
-        & (c.iloc[last] >= cfgjp.get("min_price", 100))
-        & (to20.iloc[last] >= cfgjp.get("min_turnover", 5e7))
-    )
-    picks = []
-    for tk in ok[ok.fillna(False)].index:
-        px = float(c[tk].iloc[last])
-        vr = float(v[tk].iloc[last] / vavg20[tk].iloc[last]) if vavg20[tk].iloc[last] > 0 else 9.9
-        d200 = float(px / sma200[tk].iloc[last] - 1)
-        to = float(to20[tk].iloc[last])
-        # 実証済みスコア: vr>3は期待値マイナス(除外) / 乖離25%超は不安定(除外)
-        if vr > 3 or d200 > 0.25:
-            continue
-        score = 3 if (d200 <= 0.10 and vr <= 1.5 and to >= 5e8) else 2
-        shares = int(budget // px)
-        if shares <= 0:
-            continue
-        picks.append({
-            "ticker": tk, "code": tk.replace(".T", ""), "name": names.get(tk, tk),
-            "close": px, "score": score, "turnover_oku": to / 1e8,
-            "shares": shares, "amount": shares * px,
-            "stop": round(px * (1 - stop_pct), 1),
-        })
-    picks.sort(key=lambda p: (-p["score"], -p["turnover_oku"]))
-    picks = picks[: cfgjp.get("top_n", 5)]
-
-    # --- 監視中銘柄の判定 ---
-    watch_report, still_watch = [], []
-    dates = c.index
-    for w in watch:
-        tk = w["ticker"]
-        if tk not in c.columns or not np.isfinite(c[tk].iloc[last]):
-            continue
-        px = float(c[tk].iloc[last])
-        entry = float(w["entry_close"])
-        chg = px / entry - 1
-        held = int((dates > pd.Timestamp(w["added"])).sum())
-        dc = bool((sma25[tk].iloc[last] < sma75[tk].iloc[last])
-                  and (sma25[tk].iloc[prev] >= sma75[tk].iloc[prev]))
-        below_dc = bool(sma25[tk].iloc[last] < sma75[tk].iloc[last])
-        stop_hit = bool(np.isfinite(low[tk].iloc[last]) and low[tk].iloc[last] <= w["stop"])
-        item = {"ticker": tk, "code": w["code"], "name": w["name"], "chg": chg,
-                "held": held, "close": px, "stop": w["stop"],
-                "added": w.get("added", "")}
-        if stop_hit or px <= w["stop"]:
-            item["action"] = "🔴 損切りライン到達 → 売り（成行）"
-        elif dc or below_dc:
-            item["action"] = "🟠 デッドクロス → 手仕舞い（翌朝寄付成行）"
-        elif held >= max_hold:
-            item["action"] = f"🟠 {max_hold}営業日経過 → 手仕舞い（翌朝寄付成行）"
-        elif px <= w["stop"] * 1.03:
-            item["action"] = "⚠️ 損切りラインまで3%未満"
-            still_watch.append(w)
-        else:
-            item["action"] = f"継続（損切り {w['stop']:,.0f}円）"
-            still_watch.append(w)
-        watch_report.append(item)
-    return picks, watch_report, still_watch, str(data_date.date())
 
 
 def chart_series(prefix, tickers, days=130, smas=(25, 75)):
@@ -359,36 +269,6 @@ def chart_series(prefix, tickers, days=130, smas=(25, 75)):
                                for v in ma.values]
         out[tk] = item
     return out
-
-
-# ---------------------------------------------------------------- 米国株モメンタム
-def us_momentum_top(cfg):
-    cfgus = cfg.get("us", {})
-    wide = load_wide("us")
-    c, v = wide["close"], wide["volume"]
-    to20 = (c * v).rolling(20, min_periods=20).mean()
-    lc = to20.iloc[-1].rank(ascending=False) <= cfgus.get("universe_liquidity_top", 500)
-    # 直近260営業日のうち250日以上データがある銘柄のみ（新規上場・スピンオフ直後の歪み除外）
-    seasoned = c.iloc[-260:].notna().sum() >= 250
-    mom = c.shift(20).iloc[-1] / c.shift(250).iloc[-1] - 1
-    mom = mom.where(lc & seasoned).dropna()
-    mom = mom[mom > 0]
-    top = mom.sort_values(ascending=False)
-    uni = pd.read_csv(os.path.join(DATA, "us_universe.csv"))
-    import re as _re
-    def _clean(nm):
-        nm = str(nm)
-        nm = _re.split(r" - | Common Stock| Class [A-C]| Ordinary Share", nm)[0]
-        return nm.strip()[:32]
-    names = {t: _clean(n) for t, n in zip(uni["ticker"], uni["name"])}
-    n = cfgus.get("top_n", 20)
-    res = []
-    for tk in top.index[:n]:
-        res.append({"ticker": tk, "name": names.get(tk, tk),
-                    "mom": float(top[tk]), "close": float(c[tk].iloc[-1]),
-                    "rank": int(list(top.index).index(tk)) + 1})
-    ranks = {tk: i + 1 for i, tk in enumerate(top.index)}
-    return res, ranks, str(c.index[-1].date())
 
 
 def dashboard_url(cfg):
