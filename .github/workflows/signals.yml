@@ -69,8 +69,22 @@ jobs:
             dashboard)    (cd tool && python dashboard.py) ;;
           esac
 
-      - name: 価格データのキャッシュ保存
+      - name: 実行ログを保存（失敗時の原因確認用）
         if: always()
+        run: |
+          mkdir -p tool/state
+          { echo "=== run $(date '+%Y-%m-%d %H:%M') ==="; cat data/fetch.log 2>/dev/null | tail -n 200; cat tool/state/tool.log 2>/dev/null | tail -n 200; } > tool/state/last_run.log || true
+
+      - name: 失敗をLINEで知らせる
+        if: failure()
+        run: |
+          if [ -z "$LINE_CHANNEL_ACCESS_TOKEN" ]; then exit 0; fi
+          curl -s -X POST https://api.line.me/v2/bot/message/broadcast \
+            -H "Authorization: Bearer $LINE_CHANNEL_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "{\"messages\":[{\"type\":\"text\",\"text\":\"⚠️ 株シグナル: クラウド実行が失敗しました。\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}]}" || true
+
+      - name: 価格データのキャッシュ保存
+        if: always() && hashFiles('data/*.parquet') != ''
         uses: actions/cache/save@v4
         with:
           path: data
@@ -85,7 +99,8 @@ jobs:
         run: |
           git config user.name "kabu-signal-bot"
           git config user.email "kabu-signal-bot@users.noreply.github.com"
-          git add -A tool/state data.json 2>/dev/null || true
+          git add -A tool/state 2>/dev/null || true
+          git add data.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "変更なし"
           else

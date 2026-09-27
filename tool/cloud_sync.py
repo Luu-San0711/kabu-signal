@@ -51,8 +51,9 @@ def full_fetch():
     start = (dt.date.today() - dt.timedelta(days=KEEP_DAYS)).isoformat()
     os.environ["KABU_START_DATE"] = start
     print(f"価格データを新規取得します（{start}〜）。30分前後かかります", flush=True)
-    r = subprocess.run([sys.executable, os.path.join(BASE, "scripts", "data_fetch.py")])
-    return r.returncode == 0 and _has_data()
+    subprocess.run([sys.executable, os.path.join(BASE, "scripts", "data_fetch.py")])
+    # 一部バッチが失敗しても、主要データが揃っていれば続行（失敗分は次回以降に再取得）
+    return _has_data()
 
 
 def ensure_data():
