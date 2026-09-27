@@ -1,0 +1,23 @@
+{
+ "cash_yen": 218000,
+ "cash_note": "推定（メタプラネット700株×約312円）。実際の金額に直してください",
+ "cash_confirmed": false,
+ "monthly_add_yen": 10000,
+ "last_monthly_add": "2026-09",
+ "alloc_us": 0.5,
+ "positions": [],
+ "orders": [],
+ "us": {
+  "ticker": "SPMO",
+  "exposure": 1.0,
+  "exposure_date": ""
+ },
+ "events": [],
+ "history": [
+  {
+   "date": "2026-09-27",
+   "total_yen": 218000,
+   "cash_yen": 218000
+  }
+ ]
+}
