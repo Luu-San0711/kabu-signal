@@ -90,7 +90,14 @@ def monday(cfg, today=None, notify=True):
     orders += _handle_jp_exits(port, sig, ts)
 
     # 2) 米国コア（NASDAQ-100 投資信託。金額で指示、100円単位）
-    us = st.us_core(cfg, port, fx)
+    try:
+        us = st.us_core(cfg, port, fx)
+    except Exception:
+        sl.log("米国コアの判定に失敗（価格データなし）:\n" + traceback.format_exc())
+        us = None
+    if us is None:
+        us = {"ticker": port["us"].get("ticker", "NDX100"), "name": "楽天・プラス・NASDAQ-100", "proxy": "QQQ",
+              "unit_yen": 1.0, "exposure": float(port["us"].get("exposure", 1.0)), "changed": False, "vol": None, "skip": True}
     us_pos = [x for x in pf.open_positions(port, "fund") if x["ticker"] == us["ticker"]]
     cur_yen = sum(x["shares"] for x in us_pos) * us["unit_yen"]
     sleeve = float(port["alloc_us"]) * total
@@ -100,6 +107,9 @@ def monday(cfg, today=None, notify=True):
     cash = _cash_for(port, fx)
     us_note = ""
     fund_kw = dict(date=ts, fx=fx, proxy=us["proxy"])
+    if us.get("skip"):
+        diff_yen = 0
+        us_note = "米国コアの価格を取得できず、今週の米国の指示はお休み"
     if diff_yen >= min_trade:
         amt = min(diff_yen, int(cash // 100) * 100)
         if amt >= min_trade:
@@ -119,8 +129,9 @@ def monday(cfg, today=None, notify=True):
     if us["changed"]:
         port["us"]["exposure"] = us["exposure"]
         port["us"]["exposure_date"] = ts
-    port["us"].update({"ticker": us["ticker"], "name": us["name"], "proxy": us["proxy"],
-                       "target_yen": round(target_yen), "unit_yen": us["unit_yen"], "vol": us["vol"]})
+    if not us.get("skip"):
+        port["us"].update({"ticker": us["ticker"], "name": us["name"], "proxy": us["proxy"],
+                           "target_yen": round(target_yen), "unit_yen": us["unit_yen"], "vol": us["vol"]})
 
     # 3) 日本株の新規
     cj = cfg.get("jp", {})
