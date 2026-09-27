@@ -1,0 +1,34 @@
+# 研究用: ETF等の価格履歴を取得してリポジトリに保存（手動実行のみ）
+name: research-fetch
+on:
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: '取得するティッカー（カンマ区切り）'
+        default: 'MTUM,SPMO,SPY,QQQ,IMTM,XMMO,JMOM,DWAS'
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install yfinance pandas
+      - run: |
+          python - <<'PY'
+          import yfinance as yf, pandas as pd, os
+          t = "${{ github.event.inputs.tickers }}".split(",")
+          df = yf.download(tickers=t, start="2012-01-01", interval="1d", group_by="ticker", auto_adjust=True, progress=False, threads=True)
+          rows = []
+          for tk in t:
+              if tk not in df.columns.get_level_values(0): continue
+              s = df[tk].dropna(how="all")[["Open","High","Low","Close","Volume"]].reset_index()
+              s.columns = ["date","open","high","low","close","volume"]; s["ticker"] = tk; rows.append(s)
+          out = pd.concat(rows, ignore_index=True); os.makedirs("research", exist_ok=True)
+          out.to_csv("research/etf_prices.csv", index=False); print(out.groupby("ticker").date.agg(["min","max","count"]))
+          PY
+      - run: |
+          git config user.name kabu-signal-bot; git config user.email kabu-signal-bot@users.noreply.github.com
+          git add research/etf_prices.csv; git commit -m "research: ETF価格履歴を取得" && git push
