@@ -99,13 +99,14 @@
    "ref_price": 5840.0,
    "stop": 5256.0,
    "reason": "55日高値を更新（★★★）",
-   "status": "pending",
+   "status": "skipped",
    "position_id": null,
    "fx": null,
    "note": "",
    "proxy": null,
    "lot": false,
-   "week": "2026-09-28"
+   "week": "2026-09-28",
+   "fill_date": "2026-09-28"
   },
   {
    "id": "o-50f3f26c",
@@ -142,6 +143,10 @@
   {
    "date": "2026-09-28",
    "text": "購入可能金額を 200,135円 に設定"
+  },
+  {
+   "date": "2026-09-28",
+   "text": "見送り: 買 大阪瓦斯 3株"
   }
  ],
  "history": [
