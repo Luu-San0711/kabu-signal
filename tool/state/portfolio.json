@@ -1,7 +1,7 @@
 {
- "cash_yen": 218000,
- "cash_note": "推定（メタプラネット700株×約312円）。実際の金額に直してください",
- "cash_confirmed": false,
+ "cash_yen": 200135,
+ "cash_note": "手動で設定",
+ "cash_confirmed": true,
  "monthly_add_yen": 10000,
  "last_monthly_add": "2026-09",
  "alloc_us": 0.5,
@@ -138,7 +138,12 @@
   "unit_yen": 116960.95454406738,
   "vol": 0.16128435297528892
  },
- "events": [],
+ "events": [
+  {
+   "date": "2026-09-28",
+   "text": "購入可能金額を 200,135円 に設定"
+  }
+ ],
  "history": [
   {
    "date": "2026-09-27",
