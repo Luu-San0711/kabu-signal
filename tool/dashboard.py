@@ -83,7 +83,7 @@ def build_data(cfg):
         "cash_confirmed": port.get("cash_confirmed", False),
         "monthly_add_yen": port["monthly_add_yen"],
         "alloc_us": port["alloc_us"],
-        "nisa": port.get("nisa", False),
+        "nisa": port.get("nisa", cfg.get("nisa_default", False)),
         "total_yen": val["total_yen"],
         "prev_total_yen": val["prev_total_yen"],
         "ytd_yen": ytd,

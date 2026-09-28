@@ -1,12 +1,20 @@
 # 株シグナル クラウド自動実行（GitHub Actions・外部サービス不要）
-# 月曜 9:05 JST: 今週の指示 / 平日 19:35 JST: 手仕舞い判定 / 土曜 9:05 JST: まとめ
+# 日曜夜: 今週の指示（月曜の寄付で発注）/ 平日夕方: 手仕舞い判定 / 土曜: まとめ
+# GitHubの予約実行は数時間遅れたり抜けたりするため、同じ処理を複数の時刻に予約し、
+# 2回目以降は「済み」としてスキップする（jobs.py auto）。時刻は混雑する毎時0〜5分を避けている。
 # Issue が作られた時: アプリからの記録（発注した・見送った・現金の設定）を反映
 name: kabu-signal
 
 on:
   schedule:
-    - cron: '35 10 * * 1-5'   # 平日 19:35 JST（UTC 10:35）
-    - cron: '5 0 * * *'       # 毎日 09:05 JST（UTC 00:05）月曜=指示 / 土曜=まとめ / 他=価格更新のみ
+    - cron: '17 11 * * 0'     # 日 20:17 JST  今週の指示
+    - cron: '47 13 * * 0'     # 日 22:47 JST  （予備）
+    - cron: '23 20 * * 0'     # 月 05:23 JST  （予備）
+    - cron: '41 22 * * 0'     # 月 07:41 JST  （予備）
+    - cron: '37 7 * * 1-5'    # 平日 16:37 JST 手仕舞い判定
+    - cron: '13 11 * * 1-5'   # 平日 20:13 JST （予備・当日データが遅れた時用）
+    - cron: '19 1 * * 6'      # 土 10:19 JST  まとめ
+    - cron: '53 3 * * 6'      # 土 12:53 JST  （予備）
   issues:
     types: [opened]
   workflow_dispatch:
@@ -68,7 +76,7 @@ jobs:
           if [ "${{ github.event_name }}" = "issues" ]; then
             JOB=record
           elif [ -z "$JOB" ]; then
-            if [ "${{ github.event.schedule }}" = "35 10 * * 1-5" ]; then JOB=evening; else JOB=auto; fi
+            JOB=auto
           fi
           echo "JOB=$JOB"
           python tool/jobs.py "$JOB"

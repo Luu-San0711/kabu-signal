@@ -18,8 +18,11 @@
     "vol_target": 0.2,
     "vol_lookback": 21,
     "change_band": 0.15,
-    "min_trade_yen": 3000
+    "min_trade_yen": 3000,
+    "mode": "hold",
+    "auto_invest": true
   },
   "auto_fill_days": 7,
-  "github_repo": "Luu-San0711/kabu-signal"
+  "github_repo": "Luu-San0711/kabu-signal",
+  "nisa_default": true
 }

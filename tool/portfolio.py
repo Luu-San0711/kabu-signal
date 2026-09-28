@@ -145,7 +145,7 @@ def record_fill(p, oid, fill_price=None, fill_shares=None, fill_date=None, auto=
         pos = {"id": _id("p"), "market": o["market"], "ticker": o["ticker"], "code": o["code"],
                "name": o["name"], "shares": shares, "entry_price": price, "entry_date": date,
                "stop": stop, "status": "open", "fx_entry": fx if o["market"] == "us" else None,
-               "order_id": oid, "proxy": o.get("proxy")}
+               "order_id": oid, "proxy": o.get("proxy"), "lot": bool(o.get("lot"))}
         # 同一銘柄の保有があれば合算（米国コアの買い増し）
         same = [x for x in open_positions(p, o["market"]) if x["ticker"] == o["ticker"]]
         if same:

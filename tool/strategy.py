@@ -92,7 +92,10 @@ def us_core(cfg, port, fx):
     rv = float(r.iloc[-lb:].std() * np.sqrt(252)) if len(r) >= lb else np.nan
     raw = 1.0 if not np.isfinite(rv) or rv <= 0 else float(min(1.0, vt / rv))
     cur = float(port["us"].get("exposure", 1.0))
-    new = raw if abs(raw - cur) > band else cur
+    if cu.get("mode", "hold") == "hold":
+        new = 1.0   # 持ちっぱなし（値動きによる調整はしない）
+    else:
+        new = raw if abs(raw - cur) > band else cur
     return {"ticker": cu.get("fund_id", "NDX100"), "name": cu.get("fund_name", "楽天・プラス・NASDAQ-100"),
             "proxy": ticker, "price_usd": float(s.iloc[-1]), "unit_yen": float(s.iloc[-1]) * fx,
             "price": float(s.iloc[-1]) * fx, "date": str(s.index[-1].date()),
@@ -154,7 +157,13 @@ def jp_signals(cfg, port):
         item = {"position_id": x["id"], "ticker": tk, "code": x["code"], "name": x["name"],
                 "close": px, "stop": stop, "held": held_days, "sma25": float(sma25[tk].iloc[last]),
                 "chg": px / float(x["entry_price"]) - 1, "shares": x["shares"]}
-        if stop and px <= stop:
+        lo = float(low[tk].iloc[last]) if np.isfinite(low[tk].iloc[last]) else px
+        op = float(wide["open"][tk].iloc[last]) if np.isfinite(wide["open"][tk].iloc[last]) else stop
+        if stop and x.get("lot") and lo <= stop:
+            item["exit"] = "stop_order"   # 単元株は逆指値が入っている → 約定済み
+            item["fill"] = round(min(stop, op), 1)
+            item["reason"] = "逆指値に到達"
+        elif stop and not x.get("lot") and px <= stop:
             item["exit"] = "stop"
             item["reason"] = f"終値が損切りライン{stop:,.0f}円を割った"
         elif below:

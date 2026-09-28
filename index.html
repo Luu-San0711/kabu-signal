@@ -172,7 +172,8 @@ function orderRow(o) {
   const fAmt = o.amount_yen || Math.round(o.ref_price * o.shares);
   const amt = isFund(o) ? `${yen(fAmt)}円` : isUS(o) ? `約$${Math.round(o.ref_price * o.shares).toLocaleString()}` : `約${yen(o.ref_price * o.shares)}円`;
   const desc = o.status === "auto" ? esc(o.note || o.reason)
-    : isFund(o) ? `楽天・プラス（投信）· 15:30までに金額指定`
+    : isFund(o) ? `iGrowで15:30までに金額指定${D.nisa ? "（NISA）" : ""}`
+    : o.lot ? `単元・寄付成行 · ${amt}${buy && o.stop ? ` · 逆指値 ${yen(o.stop)}円も同時に` : ""}`
     : `かぶミニ寄付（成行） · ${amt}${buy && o.stop ? ` · 損切り ${yen(o.stop)}円（終値で判定）` : ""}${!buy ? ` · ${esc(o.reason)}` : ""}${buy && isUS(o) ? ` · ${esc(o.reason)}` : ""}`;
   let h = `<div class="row ${o.status === "pending" ? "tap" : ""}" data-toggle="${id}"><div class="top"><span class="tag ${tagc}">${o.status === "auto" ? "済" : buy ? "買" : "売"}</span><span class="ttl num nw">${esc(name)} <small>${isFund(o) ? yen(fAmt) + "円" : o.shares + "株"}</small></span>${st}</div><div class="desc nw">${desc}</div>`;
   if (o.status === "pending" && isOpen) {
@@ -298,9 +299,9 @@ function viewSub() {
     h += `<div class="sec">日本株（新規買いの条件）</div>`;
     h += `<div class="set" style="border-top:1px solid var(--line)"><div class="l"><span class="t nw">日経平均 ＞ 200日線</span><span class="s num nw">${r.n225 ? `${yen(r.n225)} / ${yen(r.sma200)}` : "-"}</span></div><span class="v nw ${r.bull ? "up" : "down"}" style="font-size:14px">${r.bull ? "OK" : "NG"}</span></div>`;
     h += `<div class="set"><div class="l"><span class="t nw">急落中でない（5日で−3%以内）</span><span class="s nw">急落中は新規買いを止める</span></div><span class="v nw ${r.calm ? "up" : "down"}" style="font-size:14px">${r.calm ? "OK" : "NG"}</span></div>`;
-    h += `<div class="sec">米国コア（NASDAQ-100投信・判定はQQQ）</div>`;
-    h += `<div class="set" style="border-top:1px solid var(--line)"><div class="l"><span class="t nw">直近21日の値動きの大きさ</span><span class="s nw">年率換算。目標 20% → 荒い時は保有を減らす</span></div><span class="v num nw">${u.vol ? Math.round(u.vol * 100) + "%" : "-"}</span></div>`;
-    h += `<div class="set" style="border-bottom:1px solid var(--line)"><div class="l"><span class="t nw">現在の露出</span><span class="s nw">前回から15pt超ずれた月曜だけ変更（${u.exposure_date ? md(u.exposure_date) + "〜" : "初期"}）</span></div><span class="v num nw">${Math.round((u.exposure ?? 1) * 100)}%</span></div>`;
+    h += `<div class="sec">米国コア（NASDAQ-100投信・評価はQQQで代用）</div>`;
+    h += `<div class="set" style="border-top:1px solid var(--line)"><div class="l"><span class="t nw">直近21日の値動きの大きさ</span><span class="s nw">年率換算（参考。持ちっぱなし運用のため売買はしない）</span></div><span class="v num nw">${u.vol ? Math.round(u.vol * 100) + "%" : "-"}</span></div>`;
+    h += `<div class="set" style="border-bottom:1px solid var(--line)"><div class="l"><span class="t nw">現在の露出</span><span class="s nw">四半期ごとに米国・日本を半々に戻す</span></div><span class="v num nw">${Math.round((u.exposure ?? 1) * 100)}%</span></div>`;
   } else if (sub === "log") {
     const E = (D.events || []).slice().reverse();
     h += `<div class="sub nw">システムが記録した出来事</div><h1 class="nw">記録の履歴</h1></div><div class="list">`;
