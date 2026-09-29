@@ -1,13 +1,13 @@
 {
- "date": "2026-09-28",
- "data_date": "2026-09-28",
+ "date": "2026-09-29",
+ "data_date": "2026-09-29",
  "regime": {
   "bull": true,
   "calm": true,
   "ok": true,
-  "n225": 65877.6171875,
-  "sma200": 59959.50009765625,
-  "date": "2026-09-28"
+  "n225": 65481.26953125,
+  "sma200": 60040.3900390625,
+  "date": "2026-09-29"
  },
  "candidates": [
   {
@@ -246,9 +246,9 @@
   "changed": false,
   "sma200_ok": true
  },
- "fx": 157.10000610351562,
+ "fx": 157.42300415039062,
  "total_yen": 218000,
- "kind": "monday",
+ "kind": "evening",
  "auto_filled": 0,
  "us_note": "",
  "weekly_for": "2026-09-28",
