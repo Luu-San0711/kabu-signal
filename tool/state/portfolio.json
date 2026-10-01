@@ -1,9 +1,9 @@
 {
- "cash_yen": 200135,
+ "cash_yen": 210135,
  "cash_note": "手動で設定",
  "cash_confirmed": true,
  "monthly_add_yen": 10000,
- "last_monthly_add": "2026-09",
+ "last_monthly_add": "2026-10",
  "alloc_us": 0.5,
  "positions": [],
  "orders": [
@@ -147,6 +147,10 @@
   {
    "date": "2026-09-28",
    "text": "見送り: 買 大阪瓦斯 3株"
+  },
+  {
+   "date": "2026-10-01",
+   "text": "毎月の積み増し +10,000円 → 現金 210,135円"
   }
  ],
  "history": [
