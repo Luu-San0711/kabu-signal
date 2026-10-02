@@ -246,12 +246,12 @@
   "changed": false,
   "sma200_ok": true
  },
- "fx": 157.60699462890625,
+ "fx": 157.8719940185547,
  "total_yen": 218000,
  "kind": "evening",
  "auto_filled": 0,
  "us_note": "",
  "weekly_for": "2026-09-28",
- "week_total_yen": null,
- "sat_date": null
+ "week_total_yen": 210135,
+ "sat_date": "2026-10-03"
 }
