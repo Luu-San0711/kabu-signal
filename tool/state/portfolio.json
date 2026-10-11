@@ -1,5 +1,5 @@
 {
- "cash_yen": 22426,
+ "cash_yen": 1503,
  "cash_note": "手動で設定",
  "cash_confirmed": true,
  "monthly_add_yen": 10000,
@@ -83,6 +83,22 @@
    "status": "open",
    "fx_entry": null,
    "order_id": "o-50f3f26c",
+   "proxy": null,
+   "lot": false
+  },
+  {
+   "id": "p-42110430",
+   "market": "jp",
+   "ticker": "9201.T",
+   "code": "9201",
+   "name": "日本航空",
+   "shares": 7,
+   "entry_price": 2989.0,
+   "entry_date": "2026-10-12",
+   "stop": 2690.1,
+   "status": "open",
+   "fx_entry": null,
+   "order_id": "o-5d4f234b",
    "proxy": null,
    "lot": false
   }
@@ -236,13 +252,16 @@
    "ref_price": 2989.0,
    "stop": 2690.1,
    "reason": "55日高値を更新（★★★）",
-   "status": "pending",
-   "position_id": null,
+   "status": "auto",
+   "position_id": "p-42110430",
    "fx": null,
    "note": "",
    "proxy": null,
    "lot": false,
-   "week": "2026-10-05"
+   "week": "2026-10-05",
+   "fill_price": 2989.0,
+   "fill_shares": 7,
+   "fill_date": "2026-10-12"
   }
  ],
  "us": {
@@ -251,9 +270,9 @@
   "exposure_date": "",
   "name": "楽天・プラス・NASDAQ-100",
   "proxy": "QQQ",
-  "target_yen": 104915,
-  "unit_yen": 118306.21546981204,
-  "vol": 0.1529391311972721
+  "target_yen": 105441,
+  "unit_yen": 118885.47716148198,
+  "vol": 0.15398880228699027
  },
  "events": [
   {
@@ -287,6 +306,10 @@
   {
    "date": "2026-10-05",
    "text": "自動記録: 買 神戸製鋼所 10株 @2,077.00"
+  },
+  {
+   "date": "2026-10-12",
+   "text": "自動記録: 買 日本航空 7株 @2,989.00"
   }
  ],
  "history": [
