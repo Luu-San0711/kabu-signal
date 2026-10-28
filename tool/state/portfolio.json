@@ -262,6 +262,42 @@
    "fill_price": 2989.0,
    "fill_shares": 7,
    "fill_date": "2026-10-12"
+  },
+  {
+   "id": "o-0c685fe6",
+   "date": "2026-10-28",
+   "side": "sell",
+   "market": "jp",
+   "ticker": "9433.T",
+   "code": "9433",
+   "name": "ＫＤＤＩ",
+   "shares": 7,
+   "ref_price": 2800.5,
+   "stop": null,
+   "reason": "25日線が75日線を下回った",
+   "status": "pending",
+   "position_id": "p-f7d6c2be",
+   "fx": null,
+   "note": "",
+   "proxy": null
+  },
+  {
+   "id": "o-8f6fcba9",
+   "date": "2026-10-28",
+   "side": "sell",
+   "market": "jp",
+   "ticker": "2768.T",
+   "code": "2768",
+   "name": "双日",
+   "shares": 3,
+   "ref_price": 5447.0,
+   "stop": null,
+   "reason": "25日線が75日線を下回った",
+   "status": "pending",
+   "position_id": "p-456f0ac7",
+   "fx": null,
+   "note": "",
+   "proxy": null
   }
  ],
  "us": {
