@@ -1,9 +1,9 @@
 {
- "cash_yen": 1503,
+ "cash_yen": 6503,
  "cash_note": "手動で設定",
  "cash_confirmed": true,
  "monthly_add_yen": 10000,
- "last_monthly_add": "2026-10",
+ "last_monthly_add": "2026-11",
  "alloc_us": 0.5,
  "positions": [
   {
@@ -12,8 +12,8 @@
    "ticker": "NDX100",
    "code": "NDX100",
    "name": "楽天・プラス・NASDAQ-100",
-   "shares": 0.931935,
-   "entry_price": 116960.95454406738,
+   "shares": 0.9772,
+   "entry_price": 116659.8129477512,
    "entry_date": "2026-10-05",
    "stop": null,
    "status": "open",
@@ -298,6 +298,28 @@
    "fx": null,
    "note": "",
    "proxy": null
+  },
+  {
+   "id": "o-76a3b30c",
+   "date": "2026-11-02",
+   "side": "buy",
+   "market": "fund",
+   "ticker": "NDX100",
+   "code": "NDX100",
+   "name": "楽天・プラス・NASDAQ-100",
+   "shares": 0.045265,
+   "ref_price": 110459.78216098621,
+   "stop": null,
+   "reason": "毎月の積立（iGrow）",
+   "status": "auto",
+   "position_id": "p-72b71ff9",
+   "fx": null,
+   "note": "iGrowの積立で買えたものとして記録",
+   "proxy": "QQQ",
+   "amount_yen": 5000,
+   "fill_price": 110459.78216098621,
+   "fill_shares": 0.045265,
+   "fill_date": "2026-11-02"
   }
  ],
  "us": {
@@ -306,9 +328,9 @@
   "exposure_date": "",
   "name": "楽天・プラス・NASDAQ-100",
   "proxy": "QQQ",
-  "target_yen": 101769,
-  "unit_yen": 110459.78216098621,
-  "vol": 0.18095622688996588
+  "target_yen": 103983,
+  "unit_yen": 108962.08300896361,
+  "vol": 0.22606344368029674
  },
  "events": [
   {
@@ -346,6 +368,14 @@
   {
    "date": "2026-10-12",
    "text": "自動記録: 買 日本航空 7株 @2,989.00"
+  },
+  {
+   "date": "2026-11-02",
+   "text": "毎月の積み増し +10,000円 → 現金 11,503円"
+  },
+  {
+   "date": "2026-11-02",
+   "text": "自動記録: 買 楽天・プラス・NASDAQ-100 5,000円"
   }
  ],
  "history": [
