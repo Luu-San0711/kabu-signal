@@ -1,5 +1,5 @@
 {
- "cash_yen": 6503,
+ "cash_yen": 42447,
  "cash_note": "手動で設定",
  "cash_confirmed": true,
  "monthly_add_yen": 10000,
@@ -44,15 +44,19 @@
    "ticker": "9433.T",
    "code": "9433",
    "name": "ＫＤＤＩ",
-   "shares": 7,
+   "shares": 0,
    "entry_price": 2981.5,
    "entry_date": "2026-10-05",
    "stop": 2683.3,
-   "status": "open",
+   "status": "closed",
    "fx_entry": null,
    "order_id": "o-bc684d11",
    "proxy": null,
-   "lot": false
+   "lot": false,
+   "exit_price": 2800.5,
+   "exit_date": "2026-11-09",
+   "pnl_yen": -1267,
+   "exit_reason": "25日線が75日線を下回った"
   },
   {
    "id": "p-456f0ac7",
@@ -60,15 +64,19 @@
    "ticker": "2768.T",
    "code": "2768",
    "name": "双日",
-   "shares": 3,
+   "shares": 0,
    "entry_price": 5726.0,
    "entry_date": "2026-10-05",
    "stop": 5153.4,
-   "status": "open",
+   "status": "closed",
    "fx_entry": null,
    "order_id": "o-6152c184",
    "proxy": null,
-   "lot": false
+   "lot": false,
+   "exit_price": 5447.0,
+   "exit_date": "2026-11-09",
+   "pnl_yen": -837,
+   "exit_reason": "25日線が75日線を下回った"
   },
   {
    "id": "p-104b9de6",
@@ -275,11 +283,14 @@
    "ref_price": 2800.5,
    "stop": null,
    "reason": "25日線が75日線を下回った",
-   "status": "pending",
+   "status": "auto",
    "position_id": "p-f7d6c2be",
    "fx": null,
    "note": "",
-   "proxy": null
+   "proxy": null,
+   "fill_price": 2800.5,
+   "fill_shares": 7,
+   "fill_date": "2026-11-09"
   },
   {
    "id": "o-8f6fcba9",
@@ -293,11 +304,14 @@
    "ref_price": 5447.0,
    "stop": null,
    "reason": "25日線が75日線を下回った",
-   "status": "pending",
+   "status": "auto",
    "position_id": "p-456f0ac7",
    "fx": null,
    "note": "",
-   "proxy": null
+   "proxy": null,
+   "fill_price": 5447.0,
+   "fill_shares": 3,
+   "fill_date": "2026-11-09"
   },
   {
    "id": "o-76a3b30c",
@@ -320,6 +334,44 @@
    "fill_price": 110459.78216098621,
    "fill_shares": 0.045265,
    "fill_date": "2026-11-02"
+  },
+  {
+   "id": "o-a27d7e06",
+   "date": "2026-11-09",
+   "side": "sell",
+   "market": "jp",
+   "ticker": "6702.T",
+   "code": "6702",
+   "name": "富士通",
+   "shares": 5,
+   "ref_price": 3218.0,
+   "stop": null,
+   "reason": "終値が損切りライン3,580円を割った",
+   "status": "pending",
+   "position_id": "p-b2e4e0f3",
+   "fx": null,
+   "note": "",
+   "proxy": null,
+   "week": "2026-11-09"
+  },
+  {
+   "id": "o-518e5a25",
+   "date": "2026-11-09",
+   "side": "sell",
+   "market": "jp",
+   "ticker": "5406.T",
+   "code": "5406",
+   "name": "神戸製鋼所",
+   "shares": 10,
+   "ref_price": 1922.0,
+   "stop": null,
+   "reason": "25日線が75日線を下回った",
+   "status": "pending",
+   "position_id": "p-104b9de6",
+   "fx": null,
+   "note": "",
+   "proxy": null,
+   "week": "2026-11-09"
   }
  ],
  "us": {
@@ -328,9 +380,9 @@
   "exposure_date": "",
   "name": "楽天・プラス・NASDAQ-100",
   "proxy": "QQQ",
-  "target_yen": 103983,
-  "unit_yen": 108962.08300896361,
-  "vol": 0.22606344368029674
+  "target_yen": 101134,
+  "unit_yen": 103942.64063446037,
+  "vol": 0.31483413918272063
  },
  "events": [
   {
@@ -376,6 +428,14 @@
   {
    "date": "2026-11-02",
    "text": "自動記録: 買 楽天・プラス・NASDAQ-100 5,000円"
+  },
+  {
+   "date": "2026-11-09",
+   "text": "自動記録: 売 ＫＤＤＩ 7株 @2,800.50"
+  },
+  {
+   "date": "2026-11-09",
+   "text": "自動記録: 売 双日 3株 @5,447.00"
   }
  ],
  "history": [
