@@ -1,5 +1,5 @@
 {
- "cash_yen": 42447,
+ "cash_yen": 77757,
  "cash_note": "手動で設定",
  "cash_confirmed": true,
  "monthly_add_yen": 10000,
@@ -28,15 +28,19 @@
    "ticker": "6702.T",
    "code": "6702",
    "name": "富士通",
-   "shares": 5,
+   "shares": 0,
    "entry_price": 3978.0,
    "entry_date": "2026-10-05",
    "stop": 3580.2,
-   "status": "open",
+   "status": "closed",
    "fx_entry": null,
    "order_id": "o-13ae1cca",
    "proxy": null,
-   "lot": false
+   "lot": false,
+   "exit_price": 3218.0,
+   "exit_date": "2026-11-16",
+   "pnl_yen": -3800,
+   "exit_reason": "終値が損切りライン3,580円を割った"
   },
   {
    "id": "p-f7d6c2be",
@@ -84,15 +88,19 @@
    "ticker": "5406.T",
    "code": "5406",
    "name": "神戸製鋼所",
-   "shares": 10,
+   "shares": 0,
    "entry_price": 2077.0,
    "entry_date": "2026-10-05",
    "stop": 1869.3,
-   "status": "open",
+   "status": "closed",
    "fx_entry": null,
    "order_id": "o-50f3f26c",
    "proxy": null,
-   "lot": false
+   "lot": false,
+   "exit_price": 1922.0,
+   "exit_date": "2026-11-16",
+   "pnl_yen": -1550,
+   "exit_reason": "25日線が75日線を下回った"
   },
   {
    "id": "p-42110430",
@@ -347,12 +355,15 @@
    "ref_price": 3218.0,
    "stop": null,
    "reason": "終値が損切りライン3,580円を割った",
-   "status": "pending",
+   "status": "auto",
    "position_id": "p-b2e4e0f3",
    "fx": null,
    "note": "",
    "proxy": null,
-   "week": "2026-11-09"
+   "week": "2026-11-09",
+   "fill_price": 3218.0,
+   "fill_shares": 5,
+   "fill_date": "2026-11-16"
   },
   {
    "id": "o-518e5a25",
@@ -366,12 +377,15 @@
    "ref_price": 1922.0,
    "stop": null,
    "reason": "25日線が75日線を下回った",
-   "status": "pending",
+   "status": "auto",
    "position_id": "p-104b9de6",
    "fx": null,
    "note": "",
    "proxy": null,
-   "week": "2026-11-09"
+   "week": "2026-11-09",
+   "fill_price": 1922.0,
+   "fill_shares": 10,
+   "fill_date": "2026-11-16"
   }
  ],
  "us": {
@@ -380,9 +394,9 @@
   "exposure_date": "",
   "name": "楽天・プラス・NASDAQ-100",
   "proxy": "QQQ",
-  "target_yen": 101134,
-  "unit_yen": 103942.64063446037,
-  "vol": 0.31483413918272063
+  "target_yen": 104392,
+  "unit_yen": 108697.41609191895,
+  "vol": 0.35414499597258975
  },
  "events": [
   {
@@ -436,6 +450,14 @@
   {
    "date": "2026-11-09",
    "text": "自動記録: 売 双日 3株 @5,447.00"
+  },
+  {
+   "date": "2026-11-16",
+   "text": "自動記録: 売 富士通 5株 @3,218.00"
+  },
+  {
+   "date": "2026-11-16",
+   "text": "自動記録: 売 神戸製鋼所 10株 @1,922.00"
   }
  ],
  "history": [
